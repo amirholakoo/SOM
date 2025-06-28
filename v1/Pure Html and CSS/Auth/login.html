@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ورود به سیستم</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="login.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="main-title">ورود به سیستم</h1>
+        </header>
+
+        <main class="main-content">
+            <div class="login-container">
+                <div class="login-card">
+                    <div class="login-header">
+                        <div class="login-icon">📱</div>
+                        <h2 class="login-title">شماره تلفن خود را وارد کنید</h2>
+                        <p class="login-subtitle">کد تایید برای شما ارسال خواهد شد</p>
+                    </div>
+
+                    <form class="login-form" id="phoneForm" onsubmit="handlePhoneSubmit(event)">
+                        <div class="input-group">
+                            <label for="phoneNumber" class="input-label">شماره تلفن</label>
+                            <div class="phone-input-container">
+                                <span class="country-code">+۹۸</span>
+                                <input type="tel" id="phoneNumber" name="phoneNumber" class="phone-input"
+                                    placeholder="۰۹۱۲۳۴۵۶۷۸۹" maxlength="11" pattern="[0-9]{11}" required
+                                    autocomplete="tel">
+                            </div>
+                            <div class="input-hint">مثال: ۰۹۱۲۳۴۵۶۷۸۹ (با صفر شروع شود)</div>
+                        </div>
+
+                        <button type="submit" class="submit-btn" id="submitBtn">
+                            <span class="btn-icon">📤</span>
+                            <span class="btn-text">ارسال کد تایید</span>
+                        </button>
+                    </form>
+
+                    <div class="login-footer">
+                        <a href="index.html" class="back-link">
+                            <span class="back-icon">←</span>
+                            بازگشت به صفحه اصلی
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>سیستم مدیریت قیمت و موجودی</p>
+        </footer>
+    </div>
+
+    <script src="login.js"></script>
+</body>
+
+</html>

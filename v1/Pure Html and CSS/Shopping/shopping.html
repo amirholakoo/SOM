@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>انتخاب محصولات</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="shopping.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <h1 class="main-title">انتخاب محصولات</h1>
+                <div class="user-info">
+                    <span class="user-name" id="userName">کاربر</span>
+                    <button class="logout-btn" onclick="logout()">خروج</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="shopping-container">
+                <!-- Cash Section -->
+                <section class="product-section cash-section">
+                    <div class="section-header">
+                        <h2 class="section-title">خرید نقدی</h2>
+                        <div class="section-icon">💵</div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="product-table cash-table">
+                            <thead>
+                                <tr>
+                                    <th>نوع کاغذ</th>
+                                    <th>گرماژ</th>
+                                    <th>اندازه</th>
+                                    <th>رنگ</th>
+                                    <th>قیمت (تومان)</th>
+                                    <th>موجودی</th>
+                                    <th>انتخاب</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cashTableBody">
+                                <!-- Cash products will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Credit Section -->
+                <section class="product-section credit-section">
+                    <div class="section-header">
+                        <h2 class="section-title">خرید نسیه</h2>
+                        <div class="section-icon">📋</div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="product-table credit-table">
+                            <thead>
+                                <tr>
+                                    <th>نوع کاغذ</th>
+                                    <th>گرماژ</th>
+                                    <th>اندازه</th>
+                                    <th>رنگ</th>
+                                    <th>قیمت (تومان)</th>
+                                    <th>موجودی</th>
+                                    <th>انتخاب</th>
+                                </tr>
+                            </thead>
+                            <tbody id="creditTableBody">
+                                <!-- Credit products will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Selected Products Summary -->
+                <section class="summary-section">
+                    <div class="summary-header">
+                        <h3 class="summary-title">محصولات انتخاب شده</h3>
+                        <div class="summary-icon">🛒</div>
+                    </div>
+
+                    <div class="selected-products" id="selectedProducts">
+                        <p class="no-selection">هیچ محصولی انتخاب نشده است</p>
+                    </div>
+
+                    <div class="summary-actions">
+                        <button class="action-btn clear-btn" onclick="clearSelection()">
+                            <span class="btn-icon">🗑️</span>
+                            <span class="btn-text">پاک کردن انتخاب‌ها</span>
+                        </button>
+
+                        <button class="action-btn checkout-btn" onclick="proceedToCheckout()">
+                            <span class="btn-icon">✅</span>
+                            <span class="btn-text">ادامه خرید</span>
+                        </button>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>سیستم مدیریت قیمت و موجودی</p>
+        </footer>
+    </div>
+    <script src="shopping.js"></script>
+    <script>
+        // Check working hours when page loads
+        function checkWorkingHours() {
+            const saved = localStorage.getItem('workingHours');
+            if (saved) {
+                const workingHours = JSON.parse(saved);
+
+                if (!workingHours.isActive) {
+                    window.location.href = 'closed.html';
+                    return;
+                }
+
+                const now = new Date();
+                const currentHour = now.getHours();
+                const currentMinute = now.getMinutes();
+                const currentTime = currentHour * 60 + currentMinute;
+
+                const startTime = workingHours.startHour * 60 + workingHours.startMinute;
+                const endTime = workingHours.endHour * 60 + workingHours.endMinute;
+
+                if (currentTime < startTime || currentTime > endTime) {
+                    window.location.href = 'closed.html';
+                }
+            }
+        }
+
+        // Check working hours on page load
+        window.addEventListener('load', checkWorkingHours);
+    </script>
+</body>
+
+</html>

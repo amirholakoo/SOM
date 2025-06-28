@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>صفحه اصلی - قیمت و موجودی</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="main-title">کارخانه کاغد و مقوای همایون</h1>
+            <h4 class="main-subtitle">قیمت و موجودی</h4>
+        </header>
+
+        <main class="main-content">
+            <!-- <div class="header-actions">
+                <button class="login-btn" onclick="goToLogin()" id="loginBtn">
+                    <span class="btn-icon">🔐</span>
+                    <span class="btn-text">ورود</span>
+                </button>
+            </div> -->
+            <!-- بخش نقدی -->
+            <section class="section cash-section">
+                <div class="section-header">
+                    <h2 class="section-title">نقدی</h2>
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-card">
+                        <div class="info-label">قیمت نقدی</div>
+                        <div class="info-value" id="cashPrice">۲,۵۰۰,۰۰۰ تومان</div>
+                    </div>
+
+                    <div class="info-card">
+                        <div class="info-label">موجودی نقدی</div>
+                        <div class="info-value" id="cashStock">۱۵۰ کیلو</div>
+                    </div>
+                </div>
+
+                <div class="button-container">
+                    <button class="purchase-btn cash-btn" onclick="handleCashPurchase()">
+                        <span class="btn-icon">💰</span>
+                        <span class="btn-text">خرید نقدی</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- بخش نسیه -->
+            <section class="section credit-section">
+                <div class="section-header">
+                    <h2 class="section-title">نسیه</h2>
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-card">
+                        <div class="info-label">قیمت نسیه</div>
+                        <div class="info-value" id="creditPrice">۲,۸۰۰,۰۰۰ تومان</div>
+                    </div>
+
+                    <div class="info-card">
+                        <div class="info-label">موجودی نسیه</div>
+                        <div class="info-value" id="creditStock">۲۰۰ کیلو</div>
+                    </div>
+                </div>
+
+                <div class="button-container">
+                    <button class="purchase-btn credit-btn" onclick="handleCreditPurchase()">
+                        <span class="btn-icon">📋</span>
+                        <span class="btn-text">خرید نسیه</span>
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p>آخرین بروزرسانی: امروز</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
