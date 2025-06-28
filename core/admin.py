@@ -118,7 +118,6 @@ class ProductAdmin(admin.ModelAdmin):
         'reel_number',        # 🏷️ شماره ریل
         'location_display',   # 📍 مکان انبار
         'status_display',     # 📊 وضعیت محصول
-        'payment_status_display',  # 💳 وضعیت پرداخت
         'price_display',      # 💰 قیمت
         'width',              # 📏 عرض
         'gsm',                # ⚖️ GSM
@@ -142,7 +141,6 @@ class ProductAdmin(admin.ModelAdmin):
     list_filter = [
         'location',           # فیلتر بر اساس مکان انبار
         'status',             # فیلتر بر اساس وضعیت محصول
-        'payment_status',     # فیلتر بر اساس وضعیت پرداخت
         'gsm',                # فیلتر بر اساس GSM
         'width',              # فیلتر بر اساس عرض
         'grade',              # فیلتر بر اساس درجه کیفیت
@@ -160,8 +158,8 @@ class ProductAdmin(admin.ModelAdmin):
             ('🏷️ اطلاعات اصلی محصول', {
                 'fields': ('reel_number', 'location', 'grade')
             }),
-            ('📊 وضعیت و پرداخت', {
-                'fields': ('status', 'payment_status'),
+            ('📊 وضعیت محصول', {
+                'fields': ('status',),
             }),
             ('📏 مشخصات فنی', {
                 'fields': ('width', 'length', 'gsm', 'breaks'),
@@ -240,19 +238,7 @@ class ProductAdmin(admin.ModelAdmin):
         )
     status_display.short_description = "📊 وضعیت"
     
-    def payment_status_display(self, obj):
-        """💳 نمایش وضعیت پرداخت با رنگ"""
-        colors = {
-            'Cash': 'green',
-            'Pending': 'orange'
-        }
-        color = colors.get(obj.payment_status, 'gray')
-        return format_html(
-            '<span style="color: {}; font-weight: bold;">{}</span>',
-            color,
-            obj.get_payment_status_display()
-        )
-    payment_status_display.short_description = "💳 پرداخت"
+
     
     def total_area_display(self, obj):
         """📐 نمایش مساحت کل"""

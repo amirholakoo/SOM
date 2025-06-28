@@ -4,14 +4,15 @@
 📦 مدیریت محصولات و سیستم لاگ‌گیری
 """
 
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required, permission_required
 from django.http import JsonResponse
 from django.core.paginator import Paginator
-from django.db.models import Q, Count, Sum
+from django.db.models import Q, Count, Sum, Avg
 from django.utils import timezone
 from accounts.permissions import check_user_permission
 from .models import Customer, Product, ActivityLog, Order, OrderItem
+from accounts.models import User
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.decorators.http import require_http_methods
@@ -92,10 +93,10 @@ def finance_dashboard_view(request):
     
     # 💰 آمار مالی
     financial_stats = {
-        'total_products_value': Product.objects.count(),  # می‌تواند محاسبه ارزش دقیق شود
-        'cash_products': Product.objects.filter(payment_status='Cash').count(),
-        'pending_payments': Product.objects.filter(payment_status='Pending').count(),
+        'total_products_value': Product.objects.aggregate(Sum('price'))['price__sum'] or 0,
+        'in_stock_products': Product.objects.filter(status='In-stock').count(),
         'sold_products_count': Product.objects.filter(status='Sold').count(),
+        'total_orders': Order.objects.count(),
     }
     
     context = {
@@ -561,7 +562,6 @@ def products_landing_view(request):
     # فیلترهای جستجو
     search_query = request.GET.get('search', '')
     location_filter = request.GET.get('location', '')
-    payment_filter = request.GET.get('payment', '')
     min_price = request.GET.get('min_price', '')
     max_price = request.GET.get('max_price', '')
     
@@ -574,9 +574,6 @@ def products_landing_view(request):
     
     if location_filter:
         available_products = available_products.filter(location=location_filter)
-    
-    if payment_filter:
-        available_products = available_products.filter(payment_status=payment_filter)
     
     if min_price:
         try:
@@ -593,9 +590,10 @@ def products_landing_view(request):
     # آمار کلی
     stats = {
         'total_products': available_products.count(),
-        'total_value': sum(p.price for p in available_products),
+        'in_stock_count': available_products.count(),
+        'avg_price': available_products.aggregate(Avg('price'))['price__avg'] or 0,
+        'warehouses_count': len(Product.LOCATION_CHOICES),
         'locations': Product.LOCATION_CHOICES,
-        'payment_options': Product.PAYMENT_STATUS_CHOICES,
     }
     
     # ثبت لاگ بازدید
@@ -612,7 +610,6 @@ def products_landing_view(request):
             filters_applied={
                 'search': search_query,
                 'location': location_filter,
-                'payment': payment_filter,
                 'price_range': f"{min_price}-{max_price}"
             }
         )
@@ -622,7 +619,6 @@ def products_landing_view(request):
         'stats': stats,
         'search_query': search_query,
         'location_filter': location_filter,
-        'payment_filter': payment_filter,
         'min_price': min_price,
         'max_price': max_price,
     }
@@ -647,7 +643,6 @@ def add_to_cart_view(request):
         data = json.loads(request.body)
         product_id = data.get('product_id')
         quantity = int(data.get('quantity', 1))
-        payment_method = data.get('payment_method', 'Cash')
         
         # بررسی محصول
         try:
@@ -661,8 +656,8 @@ def add_to_cart_view(request):
         # دریافت سبد خرید از session
         cart = request.session.get('cart', {})
         
-        # اضافه کردن به سبد
-        cart_key = f"{product_id}_{payment_method}"
+        # اضافه کردن به سبد (بدون payment_method - آن را در checkout انتخاب می‌کنیم)
+        cart_key = str(product_id)
         if cart_key in cart:
             cart[cart_key]['quantity'] += quantity
         else:
@@ -671,7 +666,6 @@ def add_to_cart_view(request):
                 'product_name': product.reel_number,
                 'quantity': quantity,
                 'unit_price': float(product.price),
-                'payment_method': payment_method,
                 'added_at': timezone.now().isoformat()
             }
         
@@ -692,8 +686,7 @@ def add_to_cart_view(request):
             ip_address=get_client_ip(request),
             user_agent=request.META.get('HTTP_USER_AGENT'),
             product_id=product_id,
-            quantity=quantity,
-            payment_method=payment_method
+            quantity=quantity
         )
         
         return JsonResponse({
@@ -729,9 +722,7 @@ def cart_view(request):
                 'product': product,
                 'quantity': item['quantity'],
                 'unit_price': item['unit_price'],
-                'total_price': item_total,
-                'payment_method': item['payment_method'],
-                'payment_method_display': dict(Product.PAYMENT_STATUS_CHOICES).get(item['payment_method'], item['payment_method'])
+                'total_price': item_total
             })
             total_amount += item_total
         except Product.DoesNotExist:
@@ -752,7 +743,7 @@ def cart_view(request):
         'total_amount': total_amount,
         'cart_count': len(cart_items),
         'customer': customer,
-        'payment_methods': Product.PAYMENT_STATUS_CHOICES,
+        'payment_methods': Order.PAYMENT_METHOD_CHOICES,
     }
     
     return render(request, 'core/cart.html', context)
@@ -872,3 +863,79 @@ def order_detail_view(request, order_id):
     except Order.DoesNotExist:
         messages.error(request, '❌ سفارش مورد نظر یافت نشد')
         return redirect('accounts:customer_dashboard')
+
+
+@login_required
+@require_http_methods(["POST"])
+def update_cart_quantity_view(request):
+    """
+    🔄 تغییر تعداد محصول در سبد خرید
+    """
+    try:
+        data = json.loads(request.body)
+        cart_key = data.get('cart_key')
+        change = int(data.get('change', 0))
+        
+        cart = request.session.get('cart', {})
+        
+        if cart_key in cart:
+            new_quantity = cart[cart_key]['quantity'] + change
+            
+            if new_quantity <= 0:
+                # Remove item if quantity becomes 0 or negative
+                del cart[cart_key]
+                message = '❌ محصول از سبد خرید حذف شد'
+            else:
+                cart[cart_key]['quantity'] = new_quantity
+                message = '✅ تعداد محصول به‌روزرسانی شد'
+            
+            request.session['cart'] = cart
+            
+            return JsonResponse({
+                'success': True,
+                'message': message
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'message': '❌ محصول در سبد خرید یافت نشد'
+            })
+            
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': '❌ خطا در به‌روزرسانی سبد خرید'
+        })
+
+
+@login_required
+@require_http_methods(["POST"])
+def remove_from_cart_view(request):
+    """
+    🗑️ حذف محصول از سبد خرید
+    """
+    try:
+        data = json.loads(request.body)
+        cart_key = data.get('cart_key')
+        
+        cart = request.session.get('cart', {})
+        
+        if cart_key in cart:
+            del cart[cart_key]
+            request.session['cart'] = cart
+            
+            return JsonResponse({
+                'success': True,
+                'message': '✅ محصول از سبد خرید حذف شد'
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'message': '❌ محصول در سبد خرید یافت نشد'
+            })
+            
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': '❌ خطا در حذف محصول'
+        })

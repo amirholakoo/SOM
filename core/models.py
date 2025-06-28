@@ -204,11 +204,7 @@ class Product(BaseModel):
         ('Pre-order', '⏳ پیش‌سفارش'),
     ]
     
-    # 💳 وضعیت پرداخت
-    PAYMENT_STATUS_CHOICES = [
-        ('Cash', '💵 نقدی'),
-        ('Pending', '⏳ قسطی'),
-    ]
+
     
     # 📍 مکان انبار محصول
     location = models.CharField(
@@ -227,14 +223,7 @@ class Product(BaseModel):
         help_text="وضعیت فعلی محصول در سیستم"
     )
     
-    # 💳 وضعیت پرداخت
-    payment_status = models.CharField(
-        max_length=50,
-        choices=PAYMENT_STATUS_CHOICES,
-        default='Pending',
-        verbose_name="💳 وضعیت پرداخت",
-        help_text="وضعیت پرداخت محصول"
-    )
+
     
     # 🏷️ شماره ریل محصول (یکتا)
     reel_number = models.CharField(
@@ -323,7 +312,6 @@ class Product(BaseModel):
             models.Index(fields=['reel_number']),     # 🔍 جستجوی سریع بر اساس شماره ریل
             models.Index(fields=['location']),        # 📍 فیلتر بر اساس مکان انبار
             models.Index(fields=['status']),          # 📊 فیلتر بر اساس وضعیت
-            models.Index(fields=['payment_status']),  # 💳 فیلتر بر اساس وضعیت پرداخت
             models.Index(fields=['width', 'gsm']),    # 📏 جستجوی ترکیبی ابعاد
         ]
     
@@ -406,7 +394,6 @@ class Product(BaseModel):
             'total_weight': f"{self.get_total_weight():.2f} kg",
             'breaks': self.breaks,
             'status': self.get_status_display(),
-            'payment_status': self.get_payment_status_display(),
             'price': f"{self.price:,.0f} تومان",
             'price_per_kg': f"{(self.price / self.get_total_weight() if self.get_total_weight() > 0 else 0):,.0f} تومان/کیلو",
             'price_updated_at': self.price_updated_at.strftime('%Y/%m/%d %H:%M') if self.price_updated_at else 'تعیین نشده',
