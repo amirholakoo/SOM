@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 داشبورد مدیریت - HomayOMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'accounts:dashboard' %}">🏢 HomayOMS</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{% url 'accounts:dashboard' %}">🏠 داشبورد اصلی</a>
+                <a class="nav-link" href="{% url 'accounts:logout' %}">🚪 خروج</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h2>📊 داشبورد مدیریت</h2>
+        <p class="text-muted">مدیریت کامل سیستم (ویژه Super Admin و Admin)</p>
+
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5>👥 مدیریت کاربران</h5>
+                        <p>مشاهده و مدیریت کاربران سیستم</p>
+                        <a href="{% url 'accounts:user_list' %}" class="btn btn-primary">مشاهده</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5>📦 مدیریت موجودی</h5>
+                        <p>کنترل و مدیریت موجودی کالاها</p>
+                        <a href="{% url 'core:inventory_list' %}" class="btn btn-primary">مشاهده</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5>📋 مدیریت سفارشات</h5>
+                        <p>مشاهده و پردازش سفارشات</p>
+                        <a href="{% url 'core:orders_list' %}" class="btn btn-primary">مشاهده</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-12">
+                <h4>📈 آمار کلی سیستم</h4>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                        <h3>0</h3>
+                        <p>محصولات ثبت شده</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body text-center">
+                        <h3>0</h3>
+                        <p>سفارشات امروز</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body text-center">
+                        <h3>0</h3>
+                        <p>مشتریان فعال</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body text-center">
+                        <h3>0 ت</h3>
+                        <p>فروش کل</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 
