@@ -82,68 +82,6 @@
     </div>
 
     <script src="script.js"></script>
-    <script>
-        // Load main page content from localStorage
-        function loadMainPageContent() {
-            const saved = localStorage.getItem('mainPageContent');
-            if (saved) {
-                const mainPageContent = JSON.parse(saved);
-
-                // Update cash section
-                const cashPriceElement = document.getElementById('cashPrice');
-                const cashStockElement = document.getElementById('cashStock');
-
-                if (cashPriceElement) {
-                    cashPriceElement.textContent = new Intl.NumberFormat('fa-IR').format(mainPageContent.cashPrice) + ' تومان';
-                }
-                if (cashStockElement) {
-                    cashStockElement.textContent = mainPageContent.cashStock + ' کیلو';
-                }
-
-                // Update credit section
-                const creditPriceElement = document.getElementById('creditPrice');
-                const creditStockElement = document.getElementById('creditStock');
-
-                if (creditPriceElement) {
-                    creditPriceElement.textContent = new Intl.NumberFormat('fa-IR').format(mainPageContent.creditPrice) + ' تومان';
-                }
-                if (creditStockElement) {
-                    creditStockElement.textContent = mainPageContent.creditStock + ' کیلو';
-                }
-            }
-        }
-
-        // Check working hours when page loads
-        function checkWorkingHours() {
-            const saved = localStorage.getItem('workingHours');
-            if (saved) {
-                const workingHours = JSON.parse(saved);
-
-                if (!workingHours.isActive) {
-                    window.location.href = 'closed.html';
-                    return;
-                }
-
-                const now = new Date();
-                const currentHour = now.getHours();
-                const currentMinute = now.getMinutes();
-                const currentTime = currentHour * 60 + currentMinute;
-
-                const startTime = workingHours.startHour * 60 + workingHours.startMinute;
-                const endTime = workingHours.endHour * 60 + workingHours.endMinute;
-
-                if (currentTime < startTime || currentTime > endTime) {
-                    window.location.href = 'closed.html';
-                }
-            }
-        }
-
-        // Check working hours on page load
-        window.addEventListener('load', function () {
-            checkWorkingHours();
-            loadMainPageContent();
-        });
-    </script>
 </body>
 
 </html>
