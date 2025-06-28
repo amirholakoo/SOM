@@ -40,7 +40,8 @@ INSTALLED_APPS = [
     'corsheaders',  # مدیریت CORS
     
     # 🏠 اپلیکیشن‌های محلی پروژه
-    'core',  # 🏢 اپلیکیشن اصلی کسب‌وکار
+    'accounts',  # 👥 مدیریت کاربران و نقش‌ها
+    'core',      # 🏢 اپلیکیشن اصلی کسب‌وکار
 ]
 
 # 🔄 میدل‌ویرهای پردازش درخواست
@@ -69,6 +70,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'accounts.permissions.user_permissions_context',  # 🔐 کنترل دسترسی کاربران
             ],
         },
     },
@@ -76,6 +78,14 @@ TEMPLATES = [
 
 # 🌐 اپلیکیشن WSGI
 WSGI_APPLICATION = 'HomayOMS.wsgi.application'
+
+# 🗄️ تنظیمات پایگاه داده
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
 
 # 🔐 اعتبارسنجی رمز عبور
 AUTH_PASSWORD_VALIDATORS = [
@@ -120,5 +130,5 @@ SECURE_BROWSER_XSS_FILTER = True      # 🚫 فیلتر XSS مرورگر
 SECURE_CONTENT_TYPE_NOSNIFF = True    # 🚫 جلوگیری از Content-Type sniffing
 X_FRAME_OPTIONS = 'DENY'              # 🚫 جلوگیری از iframe
 
-# 👤 مدل کاربر سفارشی - در آینده فعال خواهد شد
-# AUTH_USER_MODEL = 'accounts.User' 
+# 👤 مدل کاربر سفارشی
+AUTH_USER_MODEL = 'accounts.User' 
