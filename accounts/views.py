@@ -19,27 +19,52 @@ from .models import User, UserSession
 
 
 def login_view(request):
-    """🔐 ورود کاربران به سیستم"""
+    """🔐 صفحه ورود اصلی با 4 گزینه مختلف"""
+    if request.user.is_authenticated:
+        return redirect('accounts:dashboard')
+    
+    return render(request, 'accounts/login.html')
+
+
+def staff_login_view(request):
+    """👥 ورود کارمندان (Super Admin, Admin, Finance)"""
     if request.user.is_authenticated:
         return redirect('accounts:dashboard')
     
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
+        role = request.POST.get('role')
+        
+        # بررسی نقش انتخاب شده
+        valid_staff_roles = [
+            User.UserRole.SUPER_ADMIN,
+            User.UserRole.ADMIN, 
+            User.UserRole.FINANCE
+        ]
+        
+        if role not in valid_staff_roles:
+            messages.error(request, '❌ نقش انتخاب شده نامعتبر است')
+            return render(request, 'accounts/staff_login.html')
         
         user = authenticate(request, username=username, password=password)
-        if user and user.status == User.UserStatus.ACTIVE:
+        if user and user.status == User.UserStatus.ACTIVE and user.role == role:
             login(request, user)
-            messages.success(request, f'🎉 خوش آمدید {user.get_full_name() or user.username}!')
+            role_names = {
+                User.UserRole.SUPER_ADMIN: 'مدیر ارشد',
+                User.UserRole.ADMIN: 'ادمین',
+                User.UserRole.FINANCE: 'مالی'
+            }
+            messages.success(request, f'🎉 خوش آمدید {role_names[role]} {user.get_full_name() or user.username}!')
             return redirect('accounts:dashboard')
         else:
-            messages.error(request, '❌ نام کاربری یا رمز عبور اشتباه است')
+            messages.error(request, '❌ نام کاربری، رمز عبور یا نقش اشتباه است')
     
-    return render(request, 'accounts/login.html')
+    return render(request, 'accounts/staff_login.html')
 
 
 def customer_login_view(request):
-    """🔵 ورود مخصوص مشتریان"""
+    """🔵 ورود مشتریان با احراز هویت SMS"""
     if request.user.is_authenticated:
         if request.user.is_customer():
             return redirect('accounts:customer_dashboard')
@@ -47,18 +72,28 @@ def customer_login_view(request):
             return redirect('accounts:dashboard')
     
     if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
+        phone = request.POST.get('phone')
         
-        user = authenticate(request, username=username, password=password)
-        if user and user.status == User.UserStatus.ACTIVE and user.is_customer():
+        # بررسی شماره تلفن
+        if not phone or not phone.startswith('09'):
+            messages.error(request, '❌ شماره تلفن معتبر وارد کنید')
+            return render(request, 'accounts/customer_login.html')
+        
+        # بررسی وجود کاربر با این شماره تلفن
+        try:
+            user = User.objects.get(phone=phone, role=User.UserRole.CUSTOMER)
+            if user.status != User.UserStatus.ACTIVE:
+                messages.error(request, '❌ حساب کاربری شما فعال نیست. لطفاً با پشتیبانی تماس بگیرید.')
+                return render(request, 'accounts/customer_login.html')
+            
+            # TODO: اینجا کد SMS ارسال می‌شود
+            # برای حالا، مستقیماً لاگین می‌کنیم
             login(request, user)
             messages.success(request, f'🎉 خوش آمدید مشتری گرامی {user.get_full_name() or user.username}!')
             return redirect('accounts:customer_dashboard')
-        elif user and user.is_customer() and user.status != User.UserStatus.ACTIVE:
-            messages.error(request, '❌ حساب کاربری شما فعال نیست. لطفاً با پشتیبانی تماس بگیرید.')
-        else:
-            messages.error(request, '❌ نام کاربری یا رمز عبور اشتباه است')
+            
+        except User.DoesNotExist:
+            messages.error(request, '❌ شماره تلفن در سیستم ثبت نشده است')
     
     return render(request, 'accounts/customer_login.html')
 

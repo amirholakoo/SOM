@@ -11,6 +11,7 @@ app_name = 'accounts'
 urlpatterns = [
     # 🔐 احراز هویت
     path('login/', views.login_view, name='login'),
+    path('staff/login/', views.staff_login_view, name='staff_login'),
     path('logout/', views.logout_view, name='logout'),
     
     # 🔵 ورود مخصوص مشتریان
