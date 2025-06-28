@@ -5,10 +5,13 @@
 """
 
 from django.contrib import admin
-from django.utils.html import format_html
+from django.contrib.admin import ModelAdmin
+from django.contrib import messages
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.shortcuts import render, redirect
 from django.urls import reverse
-from django.utils.safestring import mark_safe
-from .models import Customer, Product, ActivityLog, Order, OrderItem
+from django.utils.html import format_html
+from .models import Customer, Product, ActivityLog, Order, OrderItem, WorkingHours
 
 
 @admin.register(Customer)
@@ -261,8 +264,8 @@ class ProductAdmin(admin.ModelAdmin):
         """💰 نمایش قیمت با فرمت زیبا"""
         if obj.price > 0:
             return format_html(
-                '<span style="color: green; font-weight: bold;">💰 {:,} تومان</span>',
-                int(obj.price)
+                '<span style="color: green; font-weight: bold;">💰 {} تومان</span>',
+                f"{int(obj.price):,}"
             )
         return format_html('<span style="color: red;">💰 قیمت تعیین نشده</span>')
     price_display.short_description = "💰 قیمت"
@@ -451,8 +454,8 @@ class OrderAdmin(admin.ModelAdmin):
     def final_amount_display(self, obj):
         """💰 مبلغ نهایی"""
         return format_html(
-            '<span style="color: green; font-weight: bold;">💰 {:,} تومان</span>',
-            int(obj.final_amount)
+            '<span style="color: green; font-weight: bold;">💰 {} تومان</span>',
+            f"{int(obj.final_amount):,}"
         )
     final_amount_display.short_description = "💰 مبلغ نهایی"
     
@@ -532,8 +535,8 @@ class OrderItemAdmin(admin.ModelAdmin):
     def total_price_display(self, obj):
         """💵 قیمت کل"""
         return format_html(
-            '<span style="color: green; font-weight: bold;">💵 {:,} تومان</span>',
-            int(obj.total_price)
+            '<span style="color: green; font-weight: bold;">💵 {} تومان</span>',
+            f"{int(obj.total_price):,}"
         )
     total_price_display.short_description = "💵 قیمت کل"
 
@@ -707,3 +710,231 @@ class ActivityLogAdmin(admin.ModelAdmin):
             )
         return "اطلاعات اضافی موجود نیست"
     extra_data_display.short_description = "📄 اطلاعات اضافی"
+
+
+@admin.register(WorkingHours)
+class WorkingHoursAdmin(ModelAdmin):
+    """
+    ⏰ پنل مدیریت ساعات کاری فروشگاه
+    
+    👑 تنها Super Admin می‌تواند ساعات کاری را مدیریت کند
+    🕐 امکان تنظیم زمان‌های شروع و پایان کار
+    🔧 کنترل فعال/غیرفعال کردن ساعات کاری
+    """
+    
+    list_display = [
+        'working_hours_display', 
+        'status_display',
+        'duration_display',
+        'set_by_display',
+        'created_at_display',
+        'actions_display'
+    ]
+    
+    list_filter = [
+        'is_active',
+        'created_at',
+        'start_time',
+        'end_time'
+    ]
+    
+    search_fields = [
+        'description',
+        'set_by__username',
+        'set_by__first_name',
+        'set_by__last_name'
+    ]
+    
+    fieldsets = (
+        ('⏰ تنظیمات ساعات کاری', {
+            'fields': (
+                'start_time',
+                'end_time',
+                'is_active',
+                'description'
+            ),
+            'classes': ('wide',),
+            'description': '⏰ ساعات کاری فروشگاه را تنظیم کنید'
+        }),
+        ('📋 اطلاعات سیستم', {
+            'fields': (
+                'set_by',
+                'created_at',
+                'updated_at'
+            ),
+            'classes': ('collapse',),
+            'description': '📋 اطلاعات سیستمی و تاریخچه تغییرات'
+        }),
+    )
+    
+    readonly_fields = [
+        'created_at',
+        'updated_at',
+        'set_by'
+    ]
+    
+    ordering = ['-is_active', '-created_at']
+    
+    def get_queryset(self, request):
+        """
+        👑 محدود کردن دسترسی فقط به Super Admin
+        """
+        queryset = super().get_queryset(request)
+        
+        # 👑 فقط Super Admin می‌تواند ساعات کاری را ببیند
+        if not (request.user.is_superuser or (hasattr(request.user, 'is_super_admin') and request.user.is_super_admin())):
+            return queryset.none()  # هیچ رکوردی نشان نده
+        
+        return queryset
+    
+    def has_add_permission(self, request):
+        """
+        ➕ مجوز اضافه کردن ساعات کاری جدید
+        """
+        return request.user.is_superuser or (hasattr(request.user, 'is_super_admin') and request.user.is_super_admin())
+    
+    def has_change_permission(self, request, obj=None):
+        """
+        ✏️ مجوز تغییر ساعات کاری
+        """
+        return request.user.is_superuser or (hasattr(request.user, 'is_super_admin') and request.user.is_super_admin())
+    
+    def has_delete_permission(self, request, obj=None):
+        """
+        🗑️ مجوز حذف ساعات کاری
+        """
+        return request.user.is_superuser or (hasattr(request.user, 'is_super_admin') and request.user.is_super_admin())
+    
+    def save_model(self, request, obj, form, change):
+        """
+        💾 ذخیره مدل ساعات کاری با ثبت کاربر تنظیم‌کننده
+        """
+        if not change:  # اگر رکورد جدیدی ساخته می‌شود
+            obj.set_by = request.user
+        
+        super().save_model(request, obj, form, change)
+        
+        # پیام موفقیت
+        if change:
+            messages.success(request, f"⏰ ساعات کاری با موفقیت به‌روزرسانی شد: {obj}")
+        else:
+            messages.success(request, f"✅ ساعات کاری جدید با موفقیت ایجاد شد: {obj}")
+    
+    def working_hours_display(self, obj):
+        """
+        ⏰ نمایش ساعات کاری
+        """
+        return format_html(
+            '<span style="font-weight: bold; color: #2196F3;">⏰ {} - {}</span>',
+            obj.start_time.strftime('%H:%M'),
+            obj.end_time.strftime('%H:%M')
+        )
+    working_hours_display.short_description = "⏰ ساعات کاری"
+    working_hours_display.admin_order_field = 'start_time'
+    
+    def status_display(self, obj):
+        """
+        🔄 نمایش وضعیت ساعات کاری
+        """
+        if obj.is_active:
+            status_color = '#4CAF50'
+            status_icon = '🟢'
+            status_text = 'فعال'
+            
+            # بررسی وضعیت فعلی فروشگاه
+            if obj.is_currently_open():
+                extra_info = '<br><small style="color: #2196F3;">🏪 فروشگاه باز است</small>'
+            else:
+                time_until = obj.time_until_open()
+                if time_until:
+                    hours = int(time_until.total_seconds() // 3600)
+                    minutes = int((time_until.total_seconds() % 3600) // 60)
+                    extra_info = f'<br><small style="color: #FF9800;">⏳ باز می‌شود در: {hours}:{minutes:02d}</small>'
+                else:
+                    extra_info = '<br><small style="color: #F44336;">🔒 فروشگاه بسته است</small>'
+        else:
+            status_color = '#F44336'
+            status_icon = '🔴'
+            status_text = 'غیرفعال'
+            extra_info = ''
+        
+        return format_html(
+            '<span style="color: {};">{} {}</span>{}',
+            status_color, status_icon, status_text, extra_info
+        )
+    status_display.short_description = "🔄 وضعیت"
+    status_display.admin_order_field = 'is_active'
+    
+    def duration_display(self, obj):
+        """
+        ⏱️ نمایش مدت زمان کاری
+        """
+        duration = obj.get_duration_hours()
+        return format_html(
+            '<span style="color: #9C27B0;">⏱️ {:.1f} ساعت</span>',
+            duration
+        )
+    duration_display.short_description = "⏱️ مدت زمان"
+    
+    def set_by_display(self, obj):
+        """
+        👑 نمایش کاربر تنظیم‌کننده
+        """
+        if obj.set_by:
+            return format_html(
+                '<span style="color: #FF5722;">👑 {}</span>',
+                obj.set_by.get_full_name() or obj.set_by.username
+            )
+        return format_html('<span style="color: #757575;">➖ تعیین نشده</span>')
+    set_by_display.short_description = "👑 تنظیم شده توسط"
+    set_by_display.admin_order_field = 'set_by'
+    
+    def created_at_display(self, obj):
+        """
+        📅 نمایش تاریخ ایجاد
+        """
+        from django.utils import timezone
+        import jdatetime
+        
+        # تبدیل به تاریخ شمسی
+        jalali_date = jdatetime.datetime.fromgregorian(datetime=obj.created_at)
+        
+        return format_html(
+            '<span style="color: #607D8B;">📅 {}</span><br>'
+            '<small style="color: #9E9E9E;">🕐 {}</small>',
+            jalali_date.strftime('%Y/%m/%d'),
+            obj.created_at.strftime('%H:%M')
+        )
+    created_at_display.short_description = "📅 تاریخ ایجاد"
+    created_at_display.admin_order_field = 'created_at'
+    
+    def actions_display(self, obj):
+        """
+        🔧 نمایش عملیات
+        """
+        actions = []
+        
+        if obj.is_active:
+            actions.append('<span style="color: #F44336;">🔴 غیرفعال کردن</span>')
+        else:
+            actions.append('<span style="color: #4CAF50;">🟢 فعال کردن</span>')
+        
+        actions.append('<span style="color: #2196F3;">✏️ ویرایش</span>')
+        actions.append('<span style="color: #FF9800;">👁️ مشاهده</span>')
+        
+        return format_html(' | '.join(actions))
+    actions_display.short_description = "🔧 عملیات"
+    
+    def get_form(self, request, obj=None, **kwargs):
+        """
+        📝 تنظیم فرم ساعات کاری
+        """
+        form = super().get_form(request, obj, **kwargs)
+        
+        # تنظیم مقادیر پیش‌فرض برای فرم جدید
+        if not obj:
+            form.base_fields['start_time'].initial = '09:00'
+            form.base_fields['end_time'].initial = '18:00'
+            form.base_fields['is_active'].initial = True
+        
+        return form

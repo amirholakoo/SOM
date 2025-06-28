@@ -48,4 +48,8 @@ urlpatterns = [
     path('api/dashboard-stats/', views.dashboard_stats_api, name='dashboard_stats_api'),
     path('api/product-qr/<str:qr_code>/', views.product_qr_api, name='product_qr_api'),
     path('api/update-price/', views.update_price_api, name='update_price_api'),
+    
+    # ⏰ مدیریت ساعات کاری - فقط Super Admin
+    path('working-hours/', views.working_hours_management_view, name='working_hours_management'),
+    path('api/set-working-hours/', views.set_working_hours_view, name='set_working_hours'),
 ] 

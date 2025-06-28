@@ -1052,3 +1052,244 @@ class OrderItem(BaseModel):
             'total_weight': f"{self.get_total_weight():.2f} کیلوگرم",
             'total_area': f"{self.get_total_area():.2f} متر مربع"
         }
+
+
+class WorkingHours(BaseModel):
+    """
+    ⏰ مدل ساعات کاری - مدیریت زمان‌های فعالیت فروشگاه
+    
+    🎯 این مدل برای تنظیم ساعات کاری فروشگاه توسط Super Admin استفاده می‌شود
+    ⏰ مشتریان فقط در ساعات تعریف شده می‌توانند خرید کنند
+    👑 فقط Super Admin می‌تواند ساعات کاری را تغییر دهد
+    
+    🔧 استفاده:
+        working_hours = WorkingHours.objects.create(
+            start_time="09:00",
+            end_time="18:00",
+            is_active=True
+        )
+    """
+    
+    # ⏰ زمان شروع کار
+    start_time = models.TimeField(
+        verbose_name="⏰ زمان شروع کار",
+        help_text="زمان شروع ساعات کاری (مثال: 09:00)",
+        default="09:00"
+    )
+    
+    # 🕐 زمان پایان کار
+    end_time = models.TimeField(
+        verbose_name="🕐 زمان پایان کار", 
+        help_text="زمان پایان ساعات کاری (مثال: 18:00)",
+        default="18:00"
+    )
+    
+    # 📅 روزهای کاری
+    WEEKDAY_CHOICES = [
+        ('monday', '📅 دوشنبه'),
+        ('tuesday', '📅 سه‌شنبه'),
+        ('wednesday', '📅 چهارشنبه'),
+        ('thursday', '📅 پنج‌شنبه'),
+        ('friday', '📅 جمعه'),
+        ('saturday', '📅 شنبه'),
+        ('sunday', '📅 یکشنبه'),
+    ]
+    
+    # 📝 توضیحات ساعات کاری
+    description = models.TextField(
+        blank=True,
+        verbose_name="📝 توضیحات",
+        help_text="توضیحات اضافی درباره ساعات کاری"
+    )
+    
+    # ✅ وضعیت فعال/غیرفعال
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="✅ فعال",
+        help_text="آیا این ساعت کاری فعال است؟"
+    )
+    
+    # 👑 کاربری که ساعات کاری را تنظیم کرده
+    set_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='set_working_hours',
+        verbose_name="👑 تنظیم شده توسط",
+        help_text="Super Admin که این ساعات کاری را تنظیم کرده است"
+    )
+    
+    class Meta:
+        verbose_name = "⏰ ساعات کاری"
+        verbose_name_plural = "⏰ ساعات کاری"
+        ordering = ['-created_at']
+        
+        # 📇 ایندکس‌های پایگاه داده
+        indexes = [
+            models.Index(fields=['is_active']),
+            models.Index(fields=['start_time', 'end_time']),
+        ]
+    
+    def clean(self):
+        """
+        🧹 اعتبارسنجی ساعات کاری
+        """
+        from django.core.exceptions import ValidationError
+        
+        # بررسی زمان شروع کمتر از زمان پایان باشد
+        if self.start_time >= self.end_time:
+            raise ValidationError({
+                'end_time': '⏰ زمان پایان کار باید بعد از زمان شروع کار باشد'
+            })
+    
+    def save(self, *args, **kwargs):
+        """
+        💾 ذخیره ساعات کاری
+        📋 اگر این ساعت کاری فعال می‌شود، بقیه را غیرفعال کن
+        """
+        if self.is_active:
+            # غیرفعال کردن سایر ساعات کاری
+            WorkingHours.objects.filter(is_active=True).update(is_active=False)
+        
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        """
+        📄 نمایش رشته‌ای ساعات کاری
+        """
+        status = "🟢 فعال" if self.is_active else "🔴 غیرفعال"
+        return f"⏰ {self.start_time.strftime('%H:%M')} - {self.end_time.strftime('%H:%M')} ({status})"
+    
+    def get_duration_hours(self):
+        """
+        ⏱️ محاسبه مدت زمان کاری (ساعت)
+        """
+        from datetime import datetime, timedelta
+        
+        start = datetime.combine(datetime.today(), self.start_time)
+        end = datetime.combine(datetime.today(), self.end_time)
+        
+        # اگر زمان پایان از نیمه‌شب رد شود
+        if end < start:
+            end += timedelta(days=1)
+        
+        duration = end - start
+        return duration.total_seconds() / 3600
+    
+    def is_currently_open(self):
+        """
+        🕐 بررسی باز بودن فروشگاه در زمان فعلی
+        """
+        if not self.is_active:
+            return False
+        
+        from django.utils import timezone
+        import pytz
+        
+        # تنظیم timezone تهران
+        tehran_tz = pytz.timezone('Asia/Tehran')
+        now = timezone.now().astimezone(tehran_tz)
+        current_time = now.time()
+        
+        # بررسی آیا زمان فعلی در بازه ساعات کاری است
+        if self.start_time <= self.end_time:
+            # ساعات کاری در همان روز
+            return self.start_time <= current_time <= self.end_time
+        else:
+            # ساعات کاری از نیمه‌شب رد می‌شود
+            return current_time >= self.start_time or current_time <= self.end_time
+    
+    def time_until_open(self):
+        """
+        ⏰ محاسبه زمان باقی‌مانده تا باز شدن فروشگاه
+        """
+        if self.is_currently_open():
+            return None
+        
+        from django.utils import timezone
+        import pytz
+        from datetime import datetime, timedelta
+        
+        tehran_tz = pytz.timezone('Asia/Tehran')
+        now = timezone.now().astimezone(tehran_tz)
+        
+        # محاسبه زمان باز شدن در همین روز یا روز بعد
+        today_start = datetime.combine(now.date(), self.start_time)
+        today_start = tehran_tz.localize(today_start)
+        
+        if now.time() < self.start_time:
+            # امروز هنوز باز نشده
+            return today_start - now
+        else:
+            # فردا باز می‌شود
+            tomorrow_start = today_start + timedelta(days=1)
+            return tomorrow_start - now
+    
+    def time_until_close(self):
+        """
+        🕐 محاسبه زمان باقی‌مانده تا بسته شدن فروشگاه
+        """
+        if not self.is_currently_open():
+            return None
+        
+        from django.utils import timezone
+        import pytz
+        from datetime import datetime, timedelta
+        
+        tehran_tz = pytz.timezone('Asia/Tehran')
+        now = timezone.now().astimezone(tehran_tz)
+        
+        # محاسبه زمان بسته شدن
+        today_end = datetime.combine(now.date(), self.end_time)
+        today_end = tehran_tz.localize(today_end)
+        
+        if self.start_time <= self.end_time:
+            # ساعات کاری در همان روز
+            if now.time() <= self.end_time:
+                return today_end - now
+        else:
+            # ساعات کاری از نیمه‌شب رد می‌شود
+            if now.time() >= self.start_time:
+                # امشب بسته می‌شود
+                tomorrow_end = today_end + timedelta(days=1)
+                return tomorrow_end - now
+            else:
+                # امروز بسته می‌شود
+                return today_end - now
+        
+        return None
+    
+    @classmethod
+    def get_current_working_hours(cls):
+        """
+        🕐 دریافت ساعات کاری فعال فعلی
+        """
+        return cls.objects.filter(is_active=True).first()
+    
+    @classmethod
+    def is_shop_open(cls):
+        """
+        🏪 بررسی باز بودن فروشگاه
+        """
+        current_hours = cls.get_current_working_hours()
+        if not current_hours:
+            return False
+        return current_hours.is_currently_open()
+    
+    def get_working_hours_info(self):
+        """
+        📋 دریافت اطلاعات کامل ساعات کاری
+        """
+        return {
+            'start_time': self.start_time.strftime('%H:%M'),
+            'end_time': self.end_time.strftime('%H:%M'),
+            'duration_hours': f"{self.get_duration_hours():.1f}",
+            'is_active': self.is_active,
+            'is_currently_open': self.is_currently_open(),
+            'time_until_open': self.time_until_open(),
+            'time_until_close': self.time_until_close(),
+            'set_by': str(self.set_by) if self.set_by else 'تعیین نشده',
+            'created_at': self.created_at.strftime('%Y/%m/%d %H:%M'),
+            'description': self.description or 'بدون توضیحات'
+        }

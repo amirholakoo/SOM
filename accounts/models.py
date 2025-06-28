@@ -147,16 +147,16 @@ class User(AbstractUser, BaseModel):
                 'phone': '📞 شماره تلفن باید با 09 شروع شود'
             })
         
-        # 🔴 بررسی محدودیت Super Admin
-        if self.role == self.UserRole.SUPER_ADMIN:
-            existing_super_admins = User.objects.filter(
-                role=self.UserRole.SUPER_ADMIN
-            ).exclude(pk=self.pk).count()
-            
-            if existing_super_admins >= 2:  # حداکثر 2 Super Admin
-                raise ValidationError({
-                    'role': '🔴 حداکثر 2 Super Admin مجاز است'
-                })
+        # 👑 Super Admin هیچ محدودیتی ندارد - کامنت شده
+        # if self.role == self.UserRole.SUPER_ADMIN:
+        #     existing_super_admins = User.objects.filter(
+        #         role=self.UserRole.SUPER_ADMIN
+        #     ).exclude(pk=self.pk).count()
+        #     
+        #     if existing_super_admins >= 2:  # حداکثر 2 Super Admin
+        #         raise ValidationError({
+        #             'role': '🔴 حداکثر 2 Super Admin مجاز است'
+        #         })
     
     def save(self, *args, **kwargs):
         """

@@ -6,18 +6,24 @@
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required, permission_required
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse, Http404
 from django.core.paginator import Paginator
 from django.db.models import Q, Count, Sum, Avg
 from django.utils import timezone
 from accounts.permissions import check_user_permission
-from .models import Customer, Product, ActivityLog, Order, OrderItem
+from .models import Customer, Product, ActivityLog, Order, OrderItem, WorkingHours
 from accounts.models import User
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 import json
+from django.urls import reverse
+from django.contrib.auth import authenticate, login
+from datetime import datetime, timedelta
+import qrcode
+from io import BytesIO
+import base64
 
 
 def get_client_ip(request):
@@ -34,7 +40,7 @@ def get_client_ip(request):
 def admin_dashboard_view(request):
     """📊 داشبورد مدیریت"""
     
-    # 🔐 بررسی دسترسی - فقط Super Admin و Admin
+    # 🔐 بررسی دسترسی - Super Admin دسترسی کامل دارد، Admin محدود
     if not (request.user.is_super_admin() or request.user.is_admin()):
         return render(request, 'accounts/permission_denied.html', {
             'title': '🚫 عدم دسترسی',
@@ -60,9 +66,9 @@ def admin_dashboard_view(request):
         'recent_activities': ActivityLog.objects.select_related('user')[:10]
     }
     
-    # 💰 اگر کاربر Super Admin است، محصولات را برای تغییر قیمت ارسال کن
+    # 💰 Super Admin هیچ محدودیتی ندارد
     products_for_price_management = None
-    if request.user.role == 'super_admin':
+    if request.user.is_super_admin():  # Super Admin همیشه دسترسی دارد
         products_for_price_management = Product.objects.filter(
             status='In-stock'
         ).order_by('-created_at')[:20]  # آخرین 20 محصول
@@ -551,11 +557,177 @@ def product_qr_api(request, qr_code):
         }, status=404)
 
 
+@login_required
+@check_user_permission('is_super_admin')
+def working_hours_management_view(request):
+    """
+    ⏰ مدیریت ساعات کاری فروشگاه - فقط Super Admin
+    
+    👑 این صفحه فقط برای Super Admin قابل دسترسی است
+    🕐 امکان تنظیم ساعات شروع و پایان کار
+    📋 نمایش وضعیت فعلی فروشگاه
+    """
+    
+    # 📜 ثبت لاگ دسترسی
+    ActivityLog.log_activity(
+        user=request.user,
+        action='VIEW',
+        description='مشاهده پنل مدیریت ساعات کاری',
+        ip_address=get_client_ip(request),
+        user_agent=request.META.get('HTTP_USER_AGENT', ''),
+        severity='MEDIUM'
+    )
+    
+    # ⏰ دریافت ساعات کاری فعلی
+    current_working_hours = WorkingHours.get_current_working_hours()
+    
+    # 📊 آمار ساعات کاری
+    working_hours_stats = {
+        'total_working_hours': WorkingHours.objects.count(),
+        'active_working_hours': WorkingHours.objects.filter(is_active=True).count(),
+        'is_shop_open': WorkingHours.is_shop_open(),
+        'current_hours': current_working_hours.get_working_hours_info() if current_working_hours else None
+    }
+    
+    # 📋 تاریخچه ساعات کاری
+    working_hours_history = WorkingHours.objects.all().order_by('-created_at')[:10]
+    
+    context = {
+        'title': '⏰ مدیریت ساعات کاری',
+        'current_working_hours': current_working_hours,
+        'working_hours_stats': working_hours_stats,
+        'working_hours_history': working_hours_history,
+        'user': request.user,
+    }
+    
+    return render(request, 'core/working_hours_management.html', context)
+
+
+@login_required
+@check_user_permission('is_super_admin')
+@require_http_methods(["POST"])
+def set_working_hours_view(request):
+    """
+    ⏰ تنظیم ساعات کاری جدید - فقط Super Admin
+    
+    🎯 این API برای تنظیم ساعات کاری فروشگاه استفاده می‌شود
+    ✅ فقط یک ساعت کاری می‌تواند فعال باشد
+    """
+    
+    try:
+        # 📥 دریافت داده‌ها از درخواست
+        data = json.loads(request.body)
+        start_time = data.get('start_time')
+        end_time = data.get('end_time')
+        description = data.get('description', '')
+        
+        # 🧹 اعتبارسنجی داده‌ها
+        if not start_time or not end_time:
+            return JsonResponse({
+                'success': False,
+                'error': '⏰ زمان شروع و پایان کار الزامی است'
+            }, status=400)
+        
+        # 🕐 تبدیل به فرمت زمان
+        try:
+            start_time_obj = datetime.strptime(start_time, '%H:%M').time()
+            end_time_obj = datetime.strptime(end_time, '%H:%M').time()
+        except ValueError:
+            return JsonResponse({
+                'success': False,
+                'error': '⏰ فرمت زمان نامعتبر است (HH:MM)'
+            }, status=400)
+        
+        # 🔍 بررسی منطقی بودن زمان‌ها
+        if start_time_obj >= end_time_obj:
+            return JsonResponse({
+                'success': False,
+                'error': '⏰ زمان پایان کار باید بعد از زمان شروع کار باشد'
+            }, status=400)
+        
+        # 💾 ایجاد ساعات کاری جدید
+        working_hours = WorkingHours.objects.create(
+            start_time=start_time_obj,
+            end_time=end_time_obj,
+            description=description,
+            set_by=request.user,
+            is_active=True
+        )
+        
+        # 📜 ثبت لاگ
+        ActivityLog.log_activity(
+            user=request.user,
+            action='CREATE',
+            description=f'تنظیم ساعات کاری جدید: {start_time} - {end_time}',
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', ''),
+            severity='HIGH'
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'✅ ساعات کاری با موفقیت تنظیم شد: {working_hours}',
+            'working_hours': working_hours.get_working_hours_info()
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': '📄 فرمت JSON نامعتبر است'
+        }, status=400)
+    
+    except Exception as e:
+        # 📜 ثبت خطا
+        ActivityLog.log_activity(
+            user=request.user,
+            action='ERROR',
+            description=f'خطا در تنظیم ساعات کاری: {str(e)}',
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', ''),
+            severity='HIGH'
+        )
+        
+        return JsonResponse({
+            'success': False,
+            'error': f'❌ خطا در تنظیم ساعات کاری: {str(e)}'
+        }, status=500)
+
+
+def check_working_hours_middleware(view_func):
+    """
+    🕐 میدل‌ویر بررسی ساعات کاری
+    
+    🎯 این دکوریتر برای بررسی ساعات کاری فروشگاه استفاده می‌شود
+    🔒 اگر فروشگاه بسته باشد، کاربران عادی نمی‌توانند به صفحات مشتری دسترسی داشته باشند
+    👑 Super Admin و Admin همیشه دسترسی دارند
+    """
+    def wrapper(request, *args, **kwargs):
+        # 👑 Super Admin و Admin همیشه دسترسی دارند
+        if request.user.is_authenticated and (request.user.is_super_admin() or request.user.is_admin()):
+            return view_func(request, *args, **kwargs)
+        
+        # 🕐 بررسی ساعات کاری برای سایر کاربران
+        if not WorkingHours.is_shop_open():
+            current_hours = WorkingHours.get_current_working_hours()
+            
+            context = {
+                'title': '🔒 فروشگاه بسته است',
+                'current_working_hours': current_hours,
+                'time_until_open': current_hours.time_until_open() if current_hours else None,
+            }
+            
+            return render(request, 'core/shop_closed.html', context)
+        
+        return view_func(request, *args, **kwargs)
+    
+    return wrapper
+
+
+# اعمال میدل‌ویر ساعات کاری به صفحات مشتری
+@check_working_hours_middleware
 def products_landing_view(request):
-    """
-    🏠 صفحه اصلی محصولات - لندینگ پیج فروشگاه
-    📦 نمایش محصولات موجود برای خرید مشتریان
-    """
+    """🛍️ صفحه اصلی محصولات"""
+    
     # فقط محصولات موجود در انبار
     available_products = Product.objects.filter(status='In-stock').order_by('-created_at')
     
@@ -626,12 +798,11 @@ def products_landing_view(request):
     return render(request, 'core/products_landing.html', context)
 
 
+@check_working_hours_middleware
 @require_http_methods(["POST"])
 def add_to_cart_view(request):
-    """
-    🛒 اضافه کردن محصول به سبد خرید
-    📦 مدیریت سبد خرید در session
-    """
+    """🛒 افزودن به سبد خرید"""
+    
     if not request.user.is_authenticated:
         return JsonResponse({
             'success': False,
@@ -703,12 +874,11 @@ def add_to_cart_view(request):
         })
 
 
+@check_working_hours_middleware
 @login_required
 def cart_view(request):
-    """
-    🛒 مشاهده سبد خرید
-    📋 نمایش اقلام سبد خرید و امکان تغییر
-    """
+    """🛒 نمایش سبد خرید"""
+    
     cart = request.session.get('cart', {})
     cart_items = []
     total_amount = 0
@@ -749,13 +919,12 @@ def cart_view(request):
     return render(request, 'core/cart.html', context)
 
 
+@check_working_hours_middleware
 @login_required
 @require_http_methods(["POST"])
 def checkout_view(request):
-    """
-    💳 تسویه حساب و ایجاد سفارش
-    ✅ تبدیل سبد خرید به سفارش رسمی
-    """
+    """💳 تکمیل خرید"""
+    
     cart = request.session.get('cart', {})
     if not cart:
         messages.error(request, '🛒 سبد خرید شما خالی است')
