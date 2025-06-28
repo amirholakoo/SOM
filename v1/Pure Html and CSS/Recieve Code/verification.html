@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تایید کد - کارخانه کاغذ و مقوای همایون</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="login-styles.css">
+    <link rel="stylesheet" href="receive-code-styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="main-title">تایید کد</h1>
+        </header>
+
+        <main class="main-content">
+            <div class="verification-container">
+                <div class="verification-card">
+                    <div class="verification-header">
+                        <div class="verification-icon">📱</div>
+                        <h2 class="verification-title">تایید شماره تلفن</h2>
+                        <p class="verification-subtitle">کد تایید به شماره <span id="userPhoneDisplay"
+                                class="phone-display">۰۹۱۲۳۴۵۶۷۸۹</span> ارسال شد</p>
+                    </div>
+
+                    <div class="verification-content">
+                        <!-- Step Indicator -->
+                        <div class="step-indicator">
+                            <div class="step active" id="step1">۱</div>
+                            <div class="step pending" id="step2">۲</div>
+                        </div>
+
+                        <!-- Step 1: Code Display -->
+                        <div class="step-content active" id="step1Content">
+                            <div class="code-display-section">
+                                <div class="code-display">
+                                    <div class="code-digit" id="digit1">-</div>
+                                    <div class="code-digit" id="digit2">-</div>
+                                    <div class="code-digit" id="digit3">-</div>
+                                    <div class="code-digit" id="digit4">-</div>
+                                    <div class="code-digit" id="digit5">-</div>
+                                    <div class="code-digit" id="digit6">-</div>
+                                </div>
+                                <p class="code-hint">کد تایید شما در بالا نمایش داده شده است</p>
+                            </div>
+
+                            <div class="action-buttons">
+                                <button class="action-btn primary-btn" onclick="copyCode()" id="copyBtn">
+                                    <span class="btn-icon">📋</span>
+                                    <span class="btn-text">کپی کد</span>
+                                </button>
+
+                                <button class="action-btn secondary-btn" onclick="goToStep2()" id="verifyBtn">
+                                    <span class="btn-icon">✅</span>
+                                    <span class="btn-text">ادامه به تایید</span>
+                                </button>
+                            </div>
+
+                            <div class="info-section">
+                                <div class="info-item">
+                                    <div class="info-icon">⏰</div>
+                                    <div class="info-text">
+                                        <strong>زمان اعتبار:</strong> ۵ دقیقه
+                                    </div>
+                                </div>
+
+                                <div class="info-item">
+                                    <div class="info-icon">🔄</div>
+                                    <div class="info-text">
+                                        <strong>ارسال مجدد:</strong> تا <span id="resendCountdown">۶۰</span> ثانیه دیگر
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Code Input -->
+                        <div class="step-content" id="step2Content">
+                            <form class="verification-form" id="verifyForm" onsubmit="handleVerifySubmit(event)">
+                                <div class="input-group">
+                                    <label for="otpCode" class="input-label">کد تایید را وارد کنید</label>
+                                    <div class="otp-input-container">
+                                        <input type="text" id="otpCode" name="otpCode" class="otp-input"
+                                            placeholder="۱۲۳۴۵۶" maxlength="6" pattern="[0-9]{6}" required
+                                            autocomplete="one-time-code" inputmode="numeric">
+                                    </div>
+                                    <div class="input-hint">کد ۶ رقمی را وارد کنید</div>
+                                </div>
+
+                                <button type="submit" class="submit-btn" id="verifySubmitBtn">
+                                    <span class="btn-icon">✅</span>
+                                    <span class="btn-text">تایید کد</span>
+                                </button>
+                            </form>
+
+                            <div class="resend-section">
+                                <p class="resend-text">کد دریافت نکردید؟</p>
+                                <button class="resend-btn" onclick="resendCode()" id="resendBtn">
+                                    <span class="btn-icon">🔄</span>
+                                    <span class="btn-text">ارسال مجدد کد</span>
+                                </button>
+                                <div class="countdown" id="countdown"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="verification-footer">
+                        <a href="login.html" class="back-link">
+                            <span class="back-icon">←</span>
+                            تغییر شماره تلفن
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>سیستم مدیریت قیمت و موجودی</p>
+        </footer>
+    </div>
+
+    <script>
+        // Verification state
+        let currentStep = 1;
+        let verificationCode = '';
+        let countdownTimer = null;
+        let resendTimer = null;
+
+        // Initialize page
+        function initializePage() {
+            // Load phone number from session storage
+            const userPhone = sessionStorage.getItem('userPhone') || '09123456789';
+            document.getElementById('userPhoneDisplay').textContent = userPhone;
+
+            // Generate verification code
+            generateVerificationCode();
+
+            // Start countdown
+            startCountdown();
+        }
+
+        // Generate 6-digit verification code
+        function generateVerificationCode() {
+            verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+            displayCode(verificationCode);
+        }
+
+        // Display code in digits
+        function displayCode(code) {
+            for (let i = 0; i < 6; i++) {
+                const digitElement = document.getElementById(`digit${i + 1}`);
+                if (digitElement) {
+                    digitElement.textContent = code[i] || '-';
+                }
+            }
+        }
+
+        // Copy code to clipboard
+        function copyCode() {
+            navigator.clipboard.writeText(verificationCode).then(() => {
+                showMessage('کد در کلیپ‌بورد کپی شد', 'success');
+            }).catch(() => {
+                showMessage('خطا در کپی کردن کد', 'error');
+            });
+        }
+
+        // Go to step 2
+        function goToStep2() {
+            currentStep = 2;
+            updateStepIndicator();
+            showStepContent();
+        }
+
+        // Update step indicator
+        function updateStepIndicator() {
+            document.getElementById('step1').className = currentStep >= 1 ? 'step completed' : 'step active';
+            document.getElementById('step2').className = currentStep >= 2 ? 'step active' : 'step pending';
+        }
+
+        // Show current step content
+        function showStepContent() {
+            document.querySelectorAll('.step-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            document.getElementById(`step${currentStep}Content`).classList.add('active');
+        }
+
+        // Handle form submission
+        function handleVerifySubmit(event) {
+            event.preventDefault();
+
+            const inputCode = document.getElementById('otpCode').value;
+
+            if (inputCode === verificationCode) {
+                showMessage('کد تایید صحیح است', 'success');
+
+                // Store verification status
+                sessionStorage.setItem('isVerified', 'true');
+                sessionStorage.setItem('userName', 'کاربر تایید شده');
+
+                // Redirect to shopping page
+                setTimeout(() => {
+                    window.location.href = 'shopping.html';
+                }, 1500);
+            } else {
+                showMessage('کد تایید اشتباه است', 'error');
+                document.getElementById('otpCode').value = '';
+                document.getElementById('otpCode').focus();
+            }
+        }
+
+        // Resend code
+        function resendCode() {
+            generateVerificationCode();
+            startCountdown();
+            showMessage('کد جدید ارسال شد', 'success');
+        }
+
+        // Start countdown timer
+        function startCountdown() {
+            let countdown = 60;
+            const countdownElement = document.getElementById('resendCountdown');
+            const resendBtn = document.getElementById('resendBtn');
+
+            resendBtn.disabled = true;
+
+            countdownTimer = setInterval(() => {
+                countdown--;
+                if (countdownElement) {
+                    countdownElement.textContent = countdown;
+                }
+
+                if (countdown <= 0) {
+                    clearInterval(countdownTimer);
+                    resendBtn.disabled = false;
+                    if (countdownElement) {
+                        countdownElement.textContent = 'آماده';
+                    }
+                }
+            }, 1000);
+        }
+
+        // Show message
+        function showMessage(message, type = 'info') {
+            // Remove existing message
+            const existingMessage = document.querySelector('.message-popup');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+
+            // Create message element
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message-popup message-${type}`;
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    <span class="message-text">${message}</span>
+                    <button class="message-close" onclick="this.parentElement.parentElement.remove()">×</button>
+                </div>
+            `;
+
+            // Add to page
+            document.body.appendChild(messageDiv);
+
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (messageDiv.parentElement) {
+                    messageDiv.remove();
+                }
+            }, 5000);
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', initializePage);
+    </script>
+</body>
+
+</html>
