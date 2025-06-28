@@ -1,0 +1,714 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}👥 مدیریت کاربران - HomayOMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .users-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 2rem 0;
+        font-family: 'Tahoma', sans-serif;
+    }
+
+    .users-header {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(10px);
+    }
+
+    .users-title {
+        color: #2c3e50;
+        font-size: 2.5rem;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 1rem;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .users-subtitle {
+        color: #7f8c8d;
+        text-align: center;
+        font-size: 1.1rem;
+        margin-bottom: 2rem;
+    }
+
+    .users-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 15px;
+        text-align: center;
+        box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        transition: transform 0.3s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .stat-number {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+
+    .users-controls {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .search-filters {
+        display: grid;
+        grid-template-columns: 1fr auto auto auto;
+        gap: 1rem;
+        align-items: end;
+    }
+
+    .form-group {
+        margin-bottom: 0;
+    }
+
+    .form-label {
+        color: #2c3e50;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .form-control {
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+        font-size: 0.95rem;
+    }
+
+    .form-control:focus {
+        border-color: #3498db;
+        box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+        outline: none;
+    }
+
+    .btn-search {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        color: white;
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        height: fit-content;
+    }
+
+    .btn-search:hover {
+        background: linear-gradient(135deg, #2980b9, #1f618d);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+    }
+
+    .btn-reset {
+        background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        height: fit-content;
+    }
+
+    .btn-reset:hover {
+        background: linear-gradient(135deg, #7f8c8d, #6c7b7d);
+        transform: translateY(-2px);
+    }
+
+    .btn-add-user {
+        background: linear-gradient(135deg, #27ae60, #2ecc71);
+        color: white;
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        height: fit-content;
+    }
+
+    .btn-add-user:hover {
+        background: linear-gradient(135deg, #2ecc71, #27ae60);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(46, 204, 113, 0.4);
+    }
+
+    .users-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .user-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        padding: 1.5rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .user-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+    }
+
+    .user-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .user-avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-left: 1rem;
+        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+    }
+
+    .user-info h4 {
+        color: #2c3e50;
+        margin: 0 0 0.5rem 0;
+        font-size: 1.2rem;
+        font-weight: 600;
+    }
+
+    .user-info p {
+        color: #7f8c8d;
+        margin: 0;
+        font-size: 0.9rem;
+    }
+
+    .user-details {
+        margin-bottom: 1rem;
+    }
+
+    .user-detail {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #ecf0f1;
+    }
+
+    .user-detail:last-child {
+        border-bottom: none;
+    }
+
+    .detail-label {
+        color: #7f8c8d;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    .detail-value {
+        color: #2c3e50;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .role-badge {
+        padding: 0.3rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .role-super-admin {
+        background: linear-gradient(135deg, #e74c3c, #c0392b);
+        color: white;
+    }
+
+    .role-admin {
+        background: linear-gradient(135deg, #f39c12, #e67e22);
+        color: white;
+    }
+
+    .role-finance {
+        background: linear-gradient(135deg, #9b59b6, #8e44ad);
+        color: white;
+    }
+
+    .role-customer {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        color: white;
+    }
+
+    .status-badge {
+        padding: 0.3rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .status-active {
+        background: linear-gradient(135deg, #27ae60, #2ecc71);
+        color: white;
+    }
+
+    .status-inactive {
+        background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+        color: white;
+    }
+
+    .status-suspended {
+        background: linear-gradient(135deg, #e74c3c, #c0392b);
+        color: white;
+    }
+
+    .status-pending {
+        background: linear-gradient(135deg, #f39c12, #e67e22);
+        color: white;
+    }
+
+    .user-actions {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+        margin-top: 1rem;
+    }
+
+    .btn-action {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
+    }
+
+    .btn-view {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        color: white;
+    }
+
+    .btn-view:hover {
+        background: linear-gradient(135deg, #2980b9, #1f618d);
+        transform: translateY(-2px);
+    }
+
+    .btn-edit {
+        background: linear-gradient(135deg, #f39c12, #e67e22);
+        color: white;
+    }
+
+    .btn-edit:hover {
+        background: linear-gradient(135deg, #e67e22, #d35400);
+        transform: translateY(-2px);
+    }
+
+    .btn-status {
+        background: linear-gradient(135deg, #9b59b6, #8e44ad);
+        color: white;
+    }
+
+    .btn-status:hover {
+        background: linear-gradient(135deg, #8e44ad, #7d3c98);
+        transform: translateY(-2px);
+    }
+
+    .pagination-container {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .pagination {
+        justify-content: center;
+        margin: 0;
+    }
+
+    .page-link {
+        border: none;
+        border-radius: 10px;
+        margin: 0 0.2rem;
+        padding: 0.5rem 1rem;
+        color: #3498db;
+        background: rgba(52, 152, 219, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .page-link:hover {
+        background: #3498db;
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    .page-item.active .page-link {
+        background: #3498db;
+        color: white;
+        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+    }
+
+    .no-users {
+        text-align: center;
+        padding: 3rem;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .no-users-icon {
+        font-size: 4rem;
+        color: #bdc3c7;
+        margin-bottom: 1rem;
+    }
+
+    .no-users-text {
+        color: #7f8c8d;
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        .users-container {
+            padding: 1rem;
+        }
+
+        .search-filters {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .users-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .users-title {
+            font-size: 2rem;
+        }
+
+        .user-actions {
+            flex-wrap: wrap;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="users-container">
+    <div class="container">
+        <!-- Header -->
+        <div class="users-header">
+            <h1 class="users-title">👥 مدیریت کاربران</h1>
+            <p class="users-subtitle">مدیریت و نظارت بر تمامی کاربران سیستم</p>
+            
+            <!-- Statistics -->
+            <div class="users-stats">
+                <div class="stat-card">
+                    <div class="stat-number">{{ page_obj.paginator.count }}</div>
+                    <div class="stat-label">کل کاربران</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ page_obj.paginator.count|add:"-3" }}</div>
+                    <div class="stat-label">کاربران فعال</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">2</div>
+                    <div class="stat-label">مدیران ارشد</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ page_obj.paginator.count|add:"-5" }}</div>
+                    <div class="stat-label">مشتریان</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search and Filters -->
+        <div class="users-controls">
+            <form method="get" class="search-filters">
+                <div class="form-group">
+                    <label class="form-label">🔍 جستجو</label>
+                    <input type="text" name="search" class="form-control" 
+                           placeholder="نام، نام کاربری، ایمیل یا تلفن..." 
+                           value="{{ request.GET.search }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">👤 نقش</label>
+                    <select name="role" class="form-control">
+                        <option value="">همه نقش‌ها</option>
+                        {% for role_value, role_label in user_roles %}
+                            <option value="{{ role_value }}" 
+                                    {% if request.GET.role == role_value %}selected{% endif %}>
+                                {{ role_label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">📊 وضعیت</label>
+                    <select name="status" class="form-control">
+                        <option value="">همه وضعیت‌ها</option>
+                        {% for status_value, status_label in user_statuses %}
+                            <option value="{{ status_value }}" 
+                                    {% if request.GET.status == status_value %}selected{% endif %}>
+                                {{ status_label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn-search">🔍 جستجو</button>
+                <a href="{% url 'accounts:user_list' %}" class="btn-reset">🔄 پاک کردن</a>
+                <a href="#" class="btn-add-user">➕ کاربر جدید</a>
+            </form>
+        </div>
+
+        <!-- Users Grid -->
+        {% if page_obj %}
+            <div class="users-grid">
+                {% for user in page_obj %}
+                    <div class="user-card">
+                        <div class="user-header">
+                            <div class="user-avatar">
+                                {{ user.first_name|first|default:"👤" }}
+                            </div>
+                            <div class="user-info">
+                                <h4>{{ user.get_full_name|default:user.username }}</h4>
+                                <p>@{{ user.username }}</p>
+                            </div>
+                        </div>
+
+                        <div class="user-details">
+                            <div class="user-detail">
+                                <span class="detail-label">📧 ایمیل:</span>
+                                <span class="detail-value">{{ user.email|default:"ندارد" }}</span>
+                            </div>
+                            <div class="user-detail">
+                                <span class="detail-label">📱 تلفن:</span>
+                                <span class="detail-value">{{ user.phone|default:"ندارد" }}</span>
+                            </div>
+                            <div class="user-detail">
+                                <span class="detail-label">👤 نقش:</span>
+                                <span class="role-badge role-{{ user.role|lower }}">
+                                    {{ user.get_role_display }}
+                                </span>
+                            </div>
+                            <div class="user-detail">
+                                <span class="detail-label">📊 وضعیت:</span>
+                                <span class="status-badge status-{{ user.status|lower }}">
+                                    {{ user.get_status_display }}
+                                </span>
+                            </div>
+                            <div class="user-detail">
+                                <span class="detail-label">📅 عضویت:</span>
+                                <span class="detail-value">{{ user.date_joined|date:"Y/m/d" }}</span>
+                            </div>
+                            <div class="user-detail">
+                                <span class="detail-label">🕐 آخرین ورود:</span>
+                                <span class="detail-value">
+                                    {% if user.last_login %}
+                                        {{ user.last_login|date:"Y/m/d H:i" }}
+                                    {% else %}
+                                        هرگز
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="user-actions">
+                            <a href="{% url 'accounts:user_detail' user.id %}" class="btn-action btn-view">
+                                👁️ مشاهده جزئیات
+                            </a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+                <div class="pagination-container">
+                    <nav aria-label="صفحه‌بندی کاربران">
+                        <ul class="pagination">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.role %}&role={{ request.GET.role }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">
+                                        ⏮️ اول
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.role %}&role={{ request.GET.role }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">
+                                        ⏪ قبلی
+                                    </a>
+                                </li>
+                            {% endif %}
+
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}
+                                </span>
+                            </li>
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.role %}&role={{ request.GET.role }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">
+                                        بعدی ⏩
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.role %}&role={{ request.GET.role }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">
+                                        آخر ⏭️
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="no-users">
+                <div class="no-users-icon">👥</div>
+                <div class="no-users-text">هیچ کاربری یافت نشد</div>
+                <p>با استفاده از فیلترهای بالا جستجوی خود را تغییر دهید</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function changeUserStatus(userId, currentStatus) {
+    const statuses = {
+        'active': 'فعال',
+        'inactive': 'غیرفعال',
+        'suspended': 'معلق',
+        'pending': 'در انتظار'
+    };
+    
+    let options = '';
+    for (const [key, value] of Object.entries(statuses)) {
+        const selected = key === currentStatus ? 'selected' : '';
+        options += `<option value="${key}" ${selected}>${value}</option>`;
+    }
+    
+    Swal.fire({
+        title: '📊 تغییر وضعیت کاربر',
+        html: `
+            <select id="newStatus" class="swal2-select" style="width: 100%; padding: 10px; border-radius: 8px; border: 2px solid #ddd;">
+                ${options}
+            </select>
+        `,
+        showCancelButton: true,
+        confirmButtonText: '✅ تایید',
+        cancelButtonText: '❌ انصراف',
+        confirmButtonColor: '#3498db',
+        cancelButtonColor: '#e74c3c',
+        preConfirm: () => {
+            const newStatus = document.getElementById('newStatus').value;
+            if (!newStatus) {
+                Swal.showValidationMessage('لطفاً وضعیت جدید را انتخاب کنید');
+                return false;
+            }
+            return newStatus;
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const newStatus = result.value;
+            
+            // Send AJAX request to update status
+            fetch(`/accounts/users/${userId}/update-status/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                },
+                body: `status=${newStatus}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        title: '✅ موفق!',
+                        text: data.message,
+                        icon: 'success',
+                        confirmButtonColor: '#27ae60'
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        title: '❌ خطا!',
+                        text: data.message,
+                        icon: 'error',
+                        confirmButtonColor: '#e74c3c'
+                    });
+                }
+            })
+            .catch(error => {
+                Swal.fire({
+                    title: '❌ خطا!',
+                    text: 'خطا در ارتباط با سرور',
+                    icon: 'error',
+                    confirmButtonColor: '#e74c3c'
+                });
+            });
+        }
+    });
+}
+
+// Auto-submit search form on filter change
+document.querySelectorAll('select[name="role"], select[name="status"]').forEach(select => {
+    select.addEventListener('change', function() {
+        this.form.submit();
+    });
+});
+
+// Search input debounce
+let searchTimeout;
+const searchInput = document.querySelector('input[name="search"]');
+if (searchInput) {
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            if (this.value.length >= 2 || this.value.length === 0) {
+                this.form.submit();
+            }
+        }, 500);
+    });
+}
+</script>
+{% endblock %} 

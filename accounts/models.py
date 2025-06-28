@@ -367,7 +367,13 @@ class User(AbstractUser, BaseModel):
     def is_active_user(self):
         """
         ✅ بررسی فعال بودن کاربر
+        🔴 Super Admin همیشه فعال محسوب می‌شود
         """
+        # Super Admin همیشه فعال است
+        if self.is_super_admin():
+            return True
+        
+        # سایر کاربران بر اساس وضعیت و فیلد is_active
         return self.status == self.UserStatus.ACTIVE and self.is_active
 
 

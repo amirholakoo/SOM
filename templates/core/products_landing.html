@@ -1,0 +1,423 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}🏠 فروشگاه محصولات - HomayOMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hero-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 3rem 0;
+        margin-bottom: 2rem;
+    }
+    
+    .stats-card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        padding: 1.5rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .product-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        overflow: hidden;
+        height: 100%;
+    }
+    
+    .product-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    }
+    
+    .product-header {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+        padding: 1rem;
+        text-align: center;
+    }
+    
+    .location-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 50px;
+        font-size: 0.8rem;
+        font-weight: bold;
+        margin: 0.25rem;
+    }
+    
+    .location-Anbar_Akhal { background: #e3f2fd; color: #1565c0; }
+    .location-Anbar_Muhvateh_Kordan { background: #f3e5f5; color: #7b1fa2; }
+    .location-Anbar_Taleghani { background: #e8f5e8; color: #2e7d32; }
+    .location-Anbar_Khatam { background: #fff3e0; color: #ef6c00; }
+    .location-Anbar_Khayyam { background: #fce4ec; color: #c2185b; }
+    .location-Anbar_Khorasan { background: #e0f2f1; color: #00695c; }
+    .location-Anbar_Tehran { background: #f1f8e9; color: #558b2f; }
+    
+    .payment-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 25px;
+        font-weight: bold;
+        display: inline-block;
+    }
+    
+    .payment-Cash {
+        background: #c8e6c9;
+        color: #2e7d32;
+    }
+    
+    .payment-Pending {
+        background: #ffecb3;
+        color: #f57c00;
+    }
+    
+    .price-tag {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #2e7d32;
+        text-align: center;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 10px;
+        margin: 1rem 0;
+    }
+    
+    .add-to-cart-btn {
+        background: linear-gradient(45deg, #4caf50, #45a049);
+        border: none;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 25px;
+        font-weight: bold;
+        width: 100%;
+        transition: all 0.3s ease;
+    }
+    
+    .add-to-cart-btn:hover {
+        background: linear-gradient(45deg, #45a049, #4caf50);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+    }
+    
+    .filter-section {
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        margin-bottom: 2rem;
+    }
+    
+    .search-input {
+        border-radius: 25px;
+        border: 2px solid #e0e0e0;
+        padding: 0.75rem 1.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .search-input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+    
+    .filter-btn {
+        border-radius: 25px;
+        padding: 0.5rem 1.5rem;
+        margin: 0.25rem;
+        border: 2px solid #667eea;
+        background: white;
+        color: #667eea;
+        transition: all 0.3s ease;
+    }
+    
+    .filter-btn:hover, .filter-btn.active {
+        background: #667eea;
+        color: white;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #666;
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        color: #ddd;
+        margin-bottom: 1rem;
+    }
+    
+    .cart-notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1000;
+        min-width: 300px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="hero-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="display-4 mb-3">🏪 فروشگاه محصولات HomayOMS</h1>
+                <p class="lead mb-4">بهترین محصولات کاغذی با کیفیت بالا و قیمت مناسب</p>
+                {% if user.is_authenticated %}
+                    <p class="mb-0">👋 خوش آمدید {{ user.get_full_name|default:user.username }}</p>
+                {% else %}
+                    <a href="{% url 'accounts:customer_sms_login' %}" class="btn btn-light btn-lg">
+                        🔐 ورود برای خرید
+                    </a>
+                {% endif %}
+            </div>
+            <div class="col-md-4">
+                <div class="row">
+                    <div class="col-6">
+                        <div class="stats-card text-center">
+                            <h3>{{ stats.total_products }}</h3>
+                            <small>📦 محصول موجود</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stats-card text-center">
+                            <h3>{{ stats.total_value|floatformat:0 }}</h3>
+                            <small>💰 ارزش کل (تومان)</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters Section -->
+<div class="container">
+    <div class="filter-section">
+        <form method="GET" id="filterForm">
+            <div class="row">
+                <!-- Search -->
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">🔍 جستجو:</label>
+                    <input type="text" name="search" class="form-control search-input" 
+                           value="{{ search_query }}" placeholder="شماره رول، درجه کاغذ...">
+                </div>
+                
+                <!-- Location Filter -->
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">📍 انبار:</label>
+                    <select name="location" class="form-select">
+                        <option value="">همه انبارها</option>
+                        {% for value, label in stats.locations %}
+                            <option value="{{ value }}" {% if location_filter == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Payment Filter -->
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">💳 نحوه پرداخت:</label>
+                    <select name="payment" class="form-select">
+                        <option value="">همه روش‌ها</option>
+                        {% for value, label in stats.payment_options %}
+                            <option value="{{ value }}" {% if payment_filter == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Price Range -->
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">💰 حداقل قیمت (تومان):</label>
+                    <input type="number" name="min_price" class="form-control" 
+                           value="{{ min_price }}" placeholder="0">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">💰 حداکثر قیمت (تومان):</label>
+                    <input type="number" name="max_price" class="form-control" 
+                           value="{{ max_price }}" placeholder="1000000">
+                </div>
+                <div class="col-md-6 mb-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">🔍 اعمال فیلتر</button>
+                    <a href="{% url 'core:products_landing' %}" class="btn btn-outline-secondary">🔄 پاک کردن</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Products Grid -->
+<div class="container">
+    {% if products %}
+        <div class="row">
+            {% for product in products %}
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="card product-card">
+                        <div class="product-header">
+                            <h5 class="mb-1">📦 {{ product.reel_number }}</h5>
+                            <small>{{ product.grade|default:"درجه نامشخص" }}</small>
+                        </div>
+                        
+                        <div class="card-body">
+                            <!-- Location -->
+                            <div class="mb-3">
+                                <span class="location-badge location-{{ product.location }}">
+                                    📍 {{ product.get_location_display }}
+                                </span>
+                            </div>
+                            
+                            <!-- Specifications -->
+                            <div class="row text-center mb-3">
+                                <div class="col-4">
+                                    <small class="text-muted">عرض</small><br>
+                                    <strong>{{ product.width|default:"-" }} سانت</strong>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted">گرماژ</small><br>
+                                    <strong>{{ product.gsm|default:"-" }}</strong>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted">طول</small><br>
+                                    <strong>{{ product.length|default:"-" }} متر</strong>
+                                </div>
+                            </div>
+                            
+                            {% if product.breaks %}
+                                <div class="alert alert-warning text-center py-2">
+                                    ⚠️ پارگی: {{ product.breaks }}
+                                </div>
+                            {% endif %}
+                            
+                            <!-- Payment Method -->
+                            <div class="text-center mb-3">
+                                <span class="payment-badge payment-{{ product.payment_status }}">
+                                    {% if product.payment_status == 'Cash' %}💵{% else %}📋{% endif %}
+                                    {{ product.get_payment_status_display }}
+                                </span>
+                            </div>
+                            
+                            <!-- Price -->
+                            <div class="price-tag">
+                                💰 {{ product.price|floatformat:0 }} تومان
+                            </div>
+                            
+                            <!-- Add to Cart -->
+                            {% if user.is_authenticated %}
+                                <button class="add-to-cart-btn" onclick="addToCart({{ product.id }}, '{{ product.payment_status }}')">
+                                    🛒 افزودن به سبد خرید
+                                </button>
+                            {% else %}
+                                <a href="{% url 'accounts:customer_sms_login' %}" class="btn btn-outline-primary w-100">
+                                    🔐 ورود برای خرید
+                                </a>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="card-footer text-center text-muted">
+                            <small>📅 {{ product.created_at|date:"Y/m/d" }}</small>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <i class="fas fa-box-open"></i>
+            <h3>هیچ محصولی یافت نشد</h3>
+            <p>متاسفانه با فیلترهای انتخابی شما محصولی موجود نیست.</p>
+            <a href="{% url 'core:products_landing' %}" class="btn btn-primary">مشاهده همه محصولات</a>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Cart Notification Area -->
+<div id="cartNotification" class="cart-notification"></div>
+
+<!-- Shopping Cart Quick View -->
+{% if user.is_authenticated %}
+<div class="position-fixed bottom-0 end-0 m-3">
+    <a href="{% url 'core:cart' %}" class="btn btn-success btn-lg rounded-circle" id="cartButton">
+        🛒 <span class="badge bg-danger" id="cartCount">0</span>
+    </a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Add to Cart Functionality
+function addToCart(productId, paymentMethod) {
+    fetch('/core/add-to-cart/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+            product_id: productId,
+            quantity: 1,
+            payment_method: paymentMethod
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        showNotification(data.message, data.success ? 'success' : 'danger');
+        
+        if (data.success) {
+            // Update cart count
+            const cartCountElement = document.getElementById('cartCount');
+            if (cartCountElement) {
+                cartCountElement.textContent = data.cart_count || 0;
+            }
+        } else if (data.redirect_url) {
+            // Redirect to login if needed
+            window.location.href = data.redirect_url;
+        }
+    })
+    .catch(error => {
+        showNotification('❌ خطا در اضافه کردن به سبد خرید', 'danger');
+    });
+}
+
+// Show notification
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show`;
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.getElementById('cartNotification').appendChild(notification);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        notification.remove();
+    }, 5000);
+}
+
+// Load cart count on page load
+document.addEventListener('DOMContentLoaded', function() {
+    {% if user.is_authenticated %}
+    // You can add an API call here to get current cart count
+    {% endif %}
+});
+
+// Auto-submit form on select change
+document.querySelectorAll('select[name="location"], select[name="payment"]').forEach(select => {
+    select.addEventListener('change', function() {
+        document.getElementById('filterForm').submit();
+    });
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,390 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}👥 مدیریت مشتریان - HomayOMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .customers-header {
+        background: linear-gradient(135deg, #007bff, #0056b3);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+        border-radius: 15px;
+    }
+    
+    .customer-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+        margin-bottom: 1.5rem;
+    }
+    
+    .customer-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    }
+    
+    .customer-avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: linear-gradient(45deg, #007bff, #28a745);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 1.5rem;
+    }
+    
+    .status-active { color: #28a745; }
+    .status-inactive { color: #6c757d; }
+    .status-suspended { color: #dc3545; }
+    
+    .info-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    
+    .info-icon {
+        width: 20px;
+        margin-left: 10px;
+        text-align: center;
+    }
+    
+    .search-section {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    }
+    
+    .stats-row {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    }
+    
+    .stat-card {
+        text-align: center;
+        padding: 1rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+    
+    .stat-primary { background: linear-gradient(45deg, #007bff, #0056b3); color: white; }
+    .stat-success { background: linear-gradient(45deg, #28a745, #20c997); color: white; }
+    .stat-warning { background: linear-gradient(45deg, #ffc107, #fd7e14); color: white; }
+    .stat-info { background: linear-gradient(45deg, #17a2b8, #20c997); color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Customers Header -->
+<div class="customers-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="display-5 mb-3">👥 مدیریت مشتریان</h1>
+                <p class="lead mb-0">مشاهده و مدیریت اطلاعات مشتریان سیستم</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{% url 'core:admin_dashboard' %}" class="btn btn-light me-2">
+                    ↩️ بازگشت به داشبورد
+                </a>
+                <button class="btn btn-outline-light">
+                    ➕ افزودن مشتری
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Statistics Row -->
+    <div class="stats-row">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="stat-card stat-primary">
+                    <h3>{{ total_customers }}</h3>
+                    <p class="mb-0">👥 کل مشتریان</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card stat-success">
+                    <h3>{{ active_customers }}</h3>
+                    <p class="mb-0">✅ مشتریان فعال</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card stat-warning">
+                    <h3>{{ recent_customers }}</h3>
+                    <p class="mb-0">🆕 مشتریان جدید</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card stat-info">
+                    <h3>{{ customers_with_orders }}</h3>
+                    <p class="mb-0">🛒 دارای سفارش</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Section -->
+    <div class="search-section">
+        <form method="GET" class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">🔍 جستجو در مشتریان</label>
+                <input type="text" 
+                       name="search" 
+                       class="form-control" 
+                       placeholder="نام، تلفن، کد ملی..."
+                       value="{{ search_query }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">📊 وضعیت</label>
+                <select name="status" class="form-select">
+                    <option value="">همه وضعیت‌ها</option>
+                    <option value="Active" {% if status_filter == 'Active' %}selected{% endif %}>فعال</option>
+                    <option value="Inactive" {% if status_filter == 'Inactive' %}selected{% endif %}>غیرفعال</option>
+                    <option value="Suspended" {% if status_filter == 'Suspended' %}selected{% endif %}>مسدود</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">
+                        🔍 جستجو
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Results -->
+    <div class="row mb-3">
+        <div class="col-md-8">
+            <h5>📊 نتایج: {{ customers.paginator.count }} مشتری یافت شد</h5>
+        </div>
+        <div class="col-md-4 text-end">
+            <div class="btn-group">
+                <button class="btn btn-outline-primary" onclick="exportCustomers()">
+                    📤 خروجی Excel
+                </button>
+                <button class="btn btn-outline-success" onclick="sendBulkSMS()">
+                    📱 پیامک گروهی
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customers Grid -->
+    <div class="row">
+        {% for customer in customers %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card customer-card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="customer-avatar">
+                            {{ customer.customer_name|first|upper }}
+                        </div>
+                        <div class="ms-3 flex-grow-1">
+                            <h6 class="mb-1">{{ customer.customer_name }}</h6>
+                            <small class="text-muted status-{{ customer.status|lower }}">
+                                ● {{ customer.status|default:"نامشخص" }}
+                            </small>
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
+                                ⋮
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" onclick="viewCustomer({{ customer.id }})">👁️ مشاهده</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="editCustomer({{ customer.id }})">✏️ ویرایش</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="customerOrders({{ customer.id }})">🛒 سفارشات</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="#" onclick="deleteCustomer({{ customer.id }})">🗑️ حذف</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="customer-info">
+                        {% if customer.phone %}
+                        <div class="info-item">
+                            <span class="info-icon">📞</span>
+                            <span>{{ customer.phone }}</span>
+                        </div>
+                        {% endif %}
+                        
+                        {% if customer.national_id %}
+                        <div class="info-item">
+                            <span class="info-icon">🆔</span>
+                            <span>{{ customer.national_id }}</span>
+                        </div>
+                        {% endif %}
+                        
+                        {% if customer.economic_code %}
+                        <div class="info-item">
+                            <span class="info-icon">💼</span>
+                            <span>{{ customer.economic_code }}</span>
+                        </div>
+                        {% endif %}
+                        
+                        {% if customer.address %}
+                        <div class="info-item">
+                            <span class="info-icon">🏠</span>
+                            <span>{{ customer.address|truncatechars:30 }}</span>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="info-item">
+                            <span class="info-icon">📅</span>
+                            <span>عضویت: {{ customer.created_at|date:"Y/m/d" }}</span>
+                        </div>
+                    </div>
+                    
+                    {% if customer.comments %}
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            💬 {{ customer.comments|truncatechars:50 }}
+                        </small>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mt-3 d-flex gap-2">
+                        <button class="btn btn-sm btn-primary flex-fill" onclick="viewCustomer({{ customer.id }})">
+                            👁️ مشاهده
+                        </button>
+                        <button class="btn btn-sm btn-success" onclick="createOrder({{ customer.id }})">
+                            🛒 سفارش جدید
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                <h5>👥 هیچ مشتری یافت نشد</h5>
+                <p class="text-muted">لطفاً فیلترهای جستجو را تغییر دهید یا مشتری جدید اضافه کنید</p>
+                <button class="btn btn-primary" onclick="addNewCustomer()">
+                    ➕ افزودن مشتری جدید
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if customers.has_other_pages %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if customers.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                        ⏮️ اول
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ customers.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                        ⏪ قبلی
+                    </a>
+                </li>
+            {% endif %}
+
+            <li class="page-item active">
+                <span class="page-link">
+                    صفحه {{ customers.number }} از {{ customers.paginator.num_pages }}
+                </span>
+            </li>
+
+            {% if customers.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ customers.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                        بعدی ⏩
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ customers.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                        آخر ⏭️
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// View customer details
+function viewCustomer(customerId) {
+    showNotification('⚠️ صفحه جزئیات مشتری در حال توسعه است', 'info');
+}
+
+// Edit customer
+function editCustomer(customerId) {
+    showNotification('⚠️ قابلیت ویرایش مشتری در حال توسعه است', 'info');
+}
+
+// View customer orders
+function customerOrders(customerId) {
+    showNotification('⚠️ صفحه سفارشات مشتری در حال توسعه است', 'info');
+}
+
+// Delete customer
+function deleteCustomer(customerId) {
+    if (confirm('آیا از حذف این مشتری اطمینان دارید؟')) {
+        showNotification('⚠️ قابلیت حذف مشتری در حال توسعه است', 'warning');
+    }
+}
+
+// Create new order for customer
+function createOrder(customerId) {
+    showNotification('⚠️ قابلیت ایجاد سفارش در حال توسعه است', 'info');
+}
+
+// Add new customer
+function addNewCustomer() {
+    showNotification('⚠️ فرم افزودن مشتری جدید در حال توسعه است', 'info');
+}
+
+// Export customers
+function exportCustomers() {
+    showNotification('⚠️ قابلیت خروجی Excel در حال توسعه است', 'info');
+}
+
+// Send bulk SMS
+function sendBulkSMS() {
+    showNotification('⚠️ قابلیت پیامک گروهی در حال توسعه است', 'info');
+}
+
+// Show notification
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 1050; min-width: 300px;';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    }, 5000);
+}
+</script>
+{% endblock %} 

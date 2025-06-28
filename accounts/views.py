@@ -14,8 +14,12 @@ from django.utils import timezone
 from django.core.paginator import Paginator
 from django.db.models import Q
 import json
+import random
+import string
+from datetime import timedelta
 
 from .models import User, UserSession
+from core.models import ActivityLog
 
 
 def login_view(request):
@@ -213,3 +217,248 @@ def check_password_strength(request):
     password = request.POST.get('password', '')
     score = len(password) * 10  # Simple scoring
     return JsonResponse({'score': min(score, 100), 'level': 'خوب'})
+
+
+def customer_sms_login_view(request):
+    """
+    📱 ورود مشتری با SMS - مرحله اول: ارسال شماره تلفن
+    🔐 سیستم احراز هویت بر اساس شماره موبایل و کد تایید
+    """
+    if request.method == 'POST':
+        phone = request.POST.get('phone', '').strip()
+        
+        # اعتبارسنجی شماره تلفن
+        if not phone:
+            messages.error(request, '📱 لطفاً شماره تلفن خود را وارد کنید')
+            return render(request, 'accounts/customer_sms_login.html')
+        
+        # بررسی فرمت شماره تلفن ایرانی
+        if not phone.startswith('09') or len(phone) != 11:
+            messages.error(request, '📱 شماره تلفن باید با 09 شروع شده و 11 رقم باشد')
+            return render(request, 'accounts/customer_sms_login.html')
+        
+        try:
+            # جستجوی کاربر بر اساس شماره تلفن
+            user = User.objects.get(phone=phone, role=User.UserRole.CUSTOMER)
+            
+            # بررسی فعال بودن کاربر
+            if not user.is_active_user():
+                messages.error(request, '❌ حساب کاربری شما غیرفعال است. لطفاً با پشتیبانی تماس بگیرید')
+                return render(request, 'accounts/customer_sms_login.html')
+            
+            # تولید کد تایید تصادفی
+            verification_code = ''.join(random.choices(string.digits, k=6))
+            
+            # ذخیره کد تایید در session
+            request.session['sms_verification'] = {
+                'phone': phone,
+                'code': verification_code,
+                'user_id': user.id,
+                'created_at': timezone.now().isoformat(),
+                'attempts': 0
+            }
+            
+            # 🚀 ارسال SMS (فعلاً fake برای تست)
+            # TODO: اتصال به API واقعی SMS
+            fake_send_sms(phone, verification_code)
+            
+            # ثبت لاگ ارسال کد تایید
+            ActivityLog.log_activity(
+                user=user,
+                action='INFO',
+                description=f'کد تایید SMS برای شماره {phone} ارسال شد',
+                severity='LOW',
+                ip_address=get_client_ip(request),
+                user_agent=request.META.get('HTTP_USER_AGENT'),
+                phone=phone,
+                verification_code_sent=True
+            )
+            
+            messages.success(request, f'📱 کد تایید به شماره {phone} ارسال شد')
+            return redirect('accounts:customer_sms_verify')
+            
+        except User.DoesNotExist:
+            messages.error(request, '❌ کاربری با این شماره تلفن یافت نشد. لطفاً با پشتیبانی تماس بگیرید')
+            return render(request, 'accounts/customer_sms_login.html')
+        
+        except Exception as e:
+            messages.error(request, '❌ خطا در ارسال کد تایید. لطفاً مجدداً تلاش کنید')
+            return render(request, 'accounts/customer_sms_login.html')
+    
+    return render(request, 'accounts/customer_sms_login.html')
+
+
+def customer_sms_verify_view(request):
+    """
+    🔐 ورود مشتری با SMS - مرحله دوم: تایید کد
+    ✅ بررسی کد تایید و ورود کاربر به سیستم
+    """
+    # بررسی وجود اطلاعات تایید در session
+    sms_data = request.session.get('sms_verification')
+    if not sms_data:
+        messages.error(request, '⏰ جلسه منقضی شده است. لطفاً مجدداً وارد شوید')
+        return redirect('accounts:customer_sms_login')
+    
+    # بررسی انقضای کد (5 دقیقه)
+    created_at = timezone.datetime.fromisoformat(sms_data['created_at'])
+    if timezone.now() - created_at > timedelta(minutes=5):
+        del request.session['sms_verification']
+        messages.error(request, '⏰ کد تایید منقضی شده است. لطفاً مجدداً درخواست کنید')
+        return redirect('accounts:customer_sms_login')
+    
+    if request.method == 'POST':
+        entered_code = request.POST.get('verification_code', '').strip()
+        
+        if not entered_code:
+            messages.error(request, '🔢 لطفاً کد تایید را وارد کنید')
+            return render(request, 'accounts/customer_sms_verify.html', {
+                'phone': sms_data['phone']
+            })
+        
+        # بررسی تعداد تلاش‌ها
+        if sms_data.get('attempts', 0) >= 3:
+            del request.session['sms_verification']
+            messages.error(request, '🚫 تعداد تلاش‌های مجاز تمام شد. لطفاً مجدداً درخواست کنید')
+            return redirect('accounts:customer_sms_login')
+        
+        # بررسی صحت کد
+        if entered_code == sms_data['code']:
+            try:
+                # دریافت کاربر و ورود
+                user = User.objects.get(id=sms_data['user_id'])
+                login(request, user)
+                
+                # پاک کردن اطلاعات تایید از session
+                del request.session['sms_verification']
+                
+                # ثبت لاگ ورود موفق
+                ActivityLog.log_activity(
+                    user=user,
+                    action='LOGIN',
+                    description=f'ورود موفق مشتری با SMS - شماره: {sms_data["phone"]}',
+                    severity='MEDIUM',
+                    ip_address=get_client_ip(request),
+                    user_agent=request.META.get('HTTP_USER_AGENT'),
+                    login_method='SMS',
+                    phone=sms_data['phone']
+                )
+                
+                messages.success(request, f'🎉 خوش آمدید {user.get_full_name()}!')
+                
+                # بررسی next parameter برای redirect
+                next_url = request.GET.get('next') or request.POST.get('next')
+                if next_url:
+                    return redirect(next_url)
+                
+                return redirect('accounts:customer_dashboard')
+                
+            except User.DoesNotExist:
+                del request.session['sms_verification']
+                messages.error(request, '❌ خطا در ورود. لطفاً مجدداً تلاش کنید')
+                return redirect('accounts:customer_sms_login')
+        
+        else:
+            # افزایش تعداد تلاش‌های ناموفق
+            sms_data['attempts'] = sms_data.get('attempts', 0) + 1
+            request.session['sms_verification'] = sms_data
+            
+            remaining_attempts = 3 - sms_data['attempts']
+            if remaining_attempts > 0:
+                messages.error(request, f'❌ کد تایید اشتباه است. {remaining_attempts} تلاش باقی مانده')
+            else:
+                del request.session['sms_verification']
+                messages.error(request, '🚫 تعداد تلاش‌های مجاز تمام شد. لطفاً مجدداً درخواست کنید')
+                return redirect('accounts:customer_sms_login')
+    
+    return render(request, 'accounts/customer_sms_verify.html', {
+        'phone': sms_data['phone'],
+        'remaining_time': 300 - int((timezone.now() - timezone.datetime.fromisoformat(sms_data['created_at'])).total_seconds())
+    })
+
+
+def resend_sms_code_view(request):
+    """
+    🔄 ارسال مجدد کد تایید SMS
+    📱 برای مواردی که کاربر کد را دریافت نکرده است
+    """
+    sms_data = request.session.get('sms_verification')
+    if not sms_data:
+        messages.error(request, '⏰ جلسه منقضی شده است. لطفاً مجدداً وارد شوید')
+        return redirect('accounts:customer_sms_login')
+    
+    try:
+        user = User.objects.get(id=sms_data['user_id'])
+        
+        # تولید کد جدید
+        new_verification_code = ''.join(random.choices(string.digits, k=6))
+        
+        # بروزرسانی session
+        sms_data.update({
+            'code': new_verification_code,
+            'created_at': timezone.now().isoformat(),
+            'attempts': 0
+        })
+        request.session['sms_verification'] = sms_data
+        
+        # ارسال SMS جدید
+        fake_send_sms(sms_data['phone'], new_verification_code)
+        
+        # ثبت لاگ
+        ActivityLog.log_activity(
+            user=user,
+            action='INFO',
+            description=f'ارسال مجدد کد تایید SMS برای شماره {sms_data["phone"]}',
+            severity='LOW',
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT'),
+            phone=sms_data['phone'],
+            resend_code=True
+        )
+        
+        messages.success(request, '📱 کد تایید جدید ارسال شد')
+        
+    except User.DoesNotExist:
+        del request.session['sms_verification']
+        messages.error(request, '❌ خطا در ارسال مجدد. لطفاً از ابتدا شروع کنید')
+        return redirect('accounts:customer_sms_login')
+    
+    return redirect('accounts:customer_sms_verify')
+
+
+def fake_send_sms(phone, code):
+    """
+    📱 ارسال SMS فیک برای تست
+    🚀 TODO: جایگزینی با API واقعی SMS
+    """
+    print("\n" + "="*60)
+    print("📱 SMS VERIFICATION CODE (FAKE FOR TESTING)")
+    print("="*60)
+    print(f"📞 Phone: {phone}")
+    print(f"🔢 Code: {code}")
+    print(f"⏰ Time: {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("="*60)
+    print("💡 This is a FAKE SMS for testing purposes.")
+    print("🔧 Replace with real SMS API when ready.")
+    print("="*60 + "\n")
+    
+    # TODO: Real SMS implementation
+    # Example:
+    # import requests
+    # response = requests.post('https://api.sms-provider.com/send', {
+    #     'phone': phone,
+    #     'message': f'کد تایید شما: {code}',
+    #     'api_key': settings.SMS_API_KEY
+    # })
+    # return response.json()
+
+
+def get_client_ip(request):
+    """
+    🌐 دریافت IP واقعی کاربر
+    """
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip

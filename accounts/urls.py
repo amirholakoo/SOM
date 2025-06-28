@@ -16,6 +16,9 @@ urlpatterns = [
     
     # 🔵 ورود مخصوص مشتریان
     path('customer/login/', views.customer_login_view, name='customer_login'),
+    path('customer/sms-login/', views.customer_sms_login_view, name='customer_sms_login'),
+    path('customer/sms-verify/', views.customer_sms_verify_view, name='customer_sms_verify'),
+    path('customer/resend-sms/', views.resend_sms_code_view, name='resend_sms_code'),
     path('customer/dashboard/', views.customer_dashboard_view, name='customer_dashboard'),
     
     # 📊 داشبورد

@@ -1,0 +1,511 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}📋 مدیریت سفارشات - HomayOMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .orders-header {
+        background: linear-gradient(135deg, #ffc107, #fd7e14);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+        border-radius: 15px;
+    }
+    
+    .order-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+    }
+    
+    .order-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    }
+    
+    .order-header {
+        background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    
+    .order-status {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+    }
+    
+    .status-pending { background: #fff3cd; color: #856404; }
+    .status-confirmed { background: #d1ecf1; color: #0c5460; }
+    .status-processing { background: #cce5ff; color: #004085; }
+    .status-ready { background: #d4edda; color: #155724; }
+    .status-delivered { background: #d1ecf1; color: #0c5460; }
+    .status-cancelled { background: #f8d7da; color: #721c24; }
+    .status-returned { background: #e2e3e5; color: #383d41; }
+    
+    .payment-method {
+        padding: 0.3rem 0.8rem;
+        border-radius: 15px;
+        font-size: 0.75rem;
+        font-weight: bold;
+    }
+    
+    .payment-cash { background: #d4edda; color: #155724; }
+    .payment-terms { background: #fff3cd; color: #856404; }
+    .payment-bank_transfer { background: #cce5ff; color: #004085; }
+    .payment-check { background: #e2e3e5; color: #383d41; }
+    
+    .order-timeline {
+        position: relative;
+        padding-left: 2rem;
+    }
+    
+    .timeline-item {
+        position: relative;
+        padding-bottom: 1rem;
+    }
+    
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -1.5rem;
+        top: 0.5rem;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #28a745;
+    }
+    
+    .timeline-item::after {
+        content: '';
+        position: absolute;
+        left: -1.45rem;
+        top: 1rem;
+        width: 2px;
+        height: calc(100% - 1rem);
+        background: #e0e0e0;
+    }
+    
+    .timeline-item:last-child::after {
+        display: none;
+    }
+    
+    .stats-cards {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    }
+    
+    .stat-item {
+        text-align: center;
+        padding: 1rem;
+        border-radius: 10px;
+    }
+    
+    .filter-section {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Orders Header -->
+<div class="orders-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="display-5 mb-3">📋 مدیریت سفارشات</h1>
+                <p class="lead mb-0">پردازش و مدیریت سفارشات مشتریان</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{% url 'core:admin_dashboard' %}" class="btn btn-light me-2">
+                    ↩️ بازگشت به داشبورد
+                </a>
+                <button class="btn btn-outline-light">
+                    ➕ سفارش جدید
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Statistics Cards -->
+    <div class="stats-cards">
+        <div class="row">
+            <div class="col-md-2">
+                <div class="stat-item" style="background: linear-gradient(45deg, #ffc107, #fd7e14); color: white;">
+                    <h4>15</h4>
+                    <small>⏳ در انتظار</small>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="stat-item" style="background: linear-gradient(45deg, #17a2b8, #20c997); color: white;">
+                    <h4>8</h4>
+                    <small>✅ تایید شده</small>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="stat-item" style="background: linear-gradient(45deg, #007bff, #0056b3); color: white;">
+                    <h4>12</h4>
+                    <small>🔄 در حال پردازش</small>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="stat-item" style="background: linear-gradient(45deg, #28a745, #20c997); color: white;">
+                    <h4>25</h4>
+                    <small>🚚 تحویل شده</small>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="stat-item" style="background: linear-gradient(45deg, #dc3545, #c82333); color: white;">
+                    <h4>3</h4>
+                    <small>❌ لغو شده</small>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="stat-item" style="background: linear-gradient(45deg, #6c757d, #495057); color: white;">
+                    <h4>63</h4>
+                    <small>📊 کل سفارشات</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="filter-section">
+        <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">🔍 جستجو</label>
+                <input type="text" 
+                       name="search" 
+                       class="form-control" 
+                       placeholder="شماره سفارش، نام مشتری..."
+                       value="{{ search_query }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">📊 وضعیت</label>
+                <select name="status" class="form-select">
+                    <option value="">همه وضعیت‌ها</option>
+                    <option value="Pending">⏳ در انتظار</option>
+                    <option value="Confirmed">✅ تایید شده</option>
+                    <option value="Processing">🔄 در حال پردازش</option>
+                    <option value="Ready">📦 آماده تحویل</option>
+                    <option value="Delivered">🚚 تحویل شده</option>
+                    <option value="Cancelled">❌ لغو شده</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">💳 روش پرداخت</label>
+                <select name="payment" class="form-select">
+                    <option value="">همه روش‌ها</option>
+                    <option value="Cash">💵 نقدی</option>
+                    <option value="Terms">📅 قسطی</option>
+                    <option value="Bank_Transfer">🏦 حواله</option>
+                    <option value="Check">📝 چک</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">📅 از تاریخ</label>
+                <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">📅 تا تاریخ</label>
+                <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+            </div>
+            <div class="col-md-1">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-warning">
+                        🔍
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Orders List -->
+    <div class="row">
+        <!-- Sample Order 1 -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card order-card">
+                <div class="order-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">🏷️ سفارش #ORD-001</h6>
+                            <small class="text-muted">👤 علی احمدی</small>
+                        </div>
+                        <span class="order-status status-pending">⏳ در انتظار</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted">💰 مبلغ کل:</small>
+                            <div><strong>2,500,000 تومان</strong></div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">💳 روش پرداخت:</small>
+                            <div><span class="payment-method payment-cash">💵 نقدی</span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">📦 محصولات:</small>
+                        <div class="mt-1">
+                            <small>• ریل R001 - 1500متر</small><br>
+                            <small>• ریل R002 - 800متر</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">📅 تاریخ سفارش:</small>
+                        <div>1403/04/08 - 14:30</div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-primary flex-fill" onclick="viewOrder('ORD-001')">
+                            👁️ مشاهده
+                        </button>
+                        <button class="btn btn-sm btn-success" onclick="processOrder('ORD-001')">
+                            ✅ پردازش
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sample Order 2 -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card order-card">
+                <div class="order-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">🏷️ سفارش #ORD-002</h6>
+                            <small class="text-muted">👤 شرکت پاکان</small>
+                        </div>
+                        <span class="order-status status-processing">🔄 در حال پردازش</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted">💰 مبلغ کل:</small>
+                            <div><strong>5,200,000 تومان</strong></div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">💳 روش پرداخت:</small>
+                            <div><span class="payment-method payment-terms">📅 قسطی</span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">📦 محصولات:</small>
+                        <div class="mt-1">
+                            <small>• ریل R003 - 2000متر</small><br>
+                            <small>• ریل R004 - 1200متر</small><br>
+                            <small>• ریل R005 - 900متر</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">📅 تاریخ سفارش:</small>
+                        <div>1403/04/07 - 10:15</div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-primary flex-fill" onclick="viewOrder('ORD-002')">
+                            👁️ مشاهده
+                        </button>
+                        <button class="btn btn-sm btn-warning" onclick="updateStatus('ORD-002')">
+                            📝 وضعیت
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sample Order 3 -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card order-card">
+                <div class="order-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">🏷️ سفارش #ORD-003</h6>
+                            <small class="text-muted">👤 محمد رضایی</small>
+                        </div>
+                        <span class="order-status status-delivered">🚚 تحویل شده</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted">💰 مبلغ کل:</small>
+                            <div><strong>1,800,000 تومان</strong></div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">💳 روش پرداخت:</small>
+                            <div><span class="payment-method payment-bank_transfer">🏦 حواله</span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">📦 محصولات:</small>
+                        <div class="mt-1">
+                            <small>• ریل R006 - 1000متر</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">📅 تاریخ تحویل:</small>
+                        <div>1403/04/06 - 16:45</div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-primary flex-fill" onclick="viewOrder('ORD-003')">
+                            👁️ مشاهده
+                        </button>
+                        <button class="btn btn-sm btn-info" onclick="printInvoice('ORD-003')">
+                            🖨️ فاکتور
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- More sample orders... -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card order-card">
+                <div class="order-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">🏷️ سفارش #ORD-004</h6>
+                            <small class="text-muted">👤 شرکت کاغذ آسیا</small>
+                        </div>
+                        <span class="order-status status-ready">📦 آماده تحویل</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted">💰 مبلغ کل:</small>
+                            <div><strong>8,500,000 تومان</strong></div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">💳 روش پرداخت:</small>
+                            <div><span class="payment-method payment-check">📝 چک</span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">📦 محصولات:</small>
+                        <div class="mt-1">
+                            <small>• ریل R007 - 3000متر</small><br>
+                            <small>• ریل R008 - 2500متر</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">📅 تاریخ سفارش:</small>
+                        <div>1403/04/05 - 09:20</div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-primary flex-fill" onclick="viewOrder('ORD-004')">
+                            👁️ مشاهده
+                        </button>
+                        <button class="btn btn-sm btn-success" onclick="deliverOrder('ORD-004')">
+                            🚚 تحویل
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add more orders as needed -->
+    </div>
+
+    <!-- Load More Button -->
+    <div class="text-center mt-4">
+        <button class="btn btn-outline-warning btn-lg" onclick="loadMoreOrders()">
+            📋 نمایش سفارشات بیشتر
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// View order details
+function viewOrder(orderNumber) {
+    showNotification(`🔍 نمایش جزئیات سفارش ${orderNumber}`, 'info');
+    // window.location.href = `/core/orders/${orderNumber}/`;
+}
+
+// Process order
+function processOrder(orderNumber) {
+    if (confirm(`آیا سفارش ${orderNumber} را برای پردازش تایید می‌کنید؟`)) {
+        showNotification(`✅ سفارش ${orderNumber} برای پردازش تایید شد`, 'success');
+    }
+}
+
+// Update order status
+function updateStatus(orderNumber) {
+    showNotification(`📝 بروزرسانی وضعیت سفارش ${orderNumber}`, 'info');
+}
+
+// Deliver order
+function deliverOrder(orderNumber) {
+    if (confirm(`آیا سفارش ${orderNumber} تحویل داده شده است؟`)) {
+        showNotification(`🚚 سفارش ${orderNumber} تحویل داده شد`, 'success');
+    }
+}
+
+// Print invoice
+function printInvoice(orderNumber) {
+    showNotification(`🖨️ چاپ فاکتور سفارش ${orderNumber}`, 'info');
+}
+
+// Load more orders
+function loadMoreOrders() {
+    showNotification('📋 بارگذاری سفارشات بیشتر...', 'info');
+}
+
+// Show notification
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 1050; min-width: 300px;';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    }, 5000);
+}
+
+// Auto-refresh orders every 30 seconds
+setInterval(() => {
+    // Auto refresh logic here
+    console.log('🔄 Auto-refreshing orders...');
+}, 30000);
+</script>
+{% endblock %} 
