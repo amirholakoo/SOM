@@ -62,53 +62,23 @@ function logout() {
 }
 
 /**
- * Handle cash purchase button click
+ * Handle cash purchase
  */
 function handleCashPurchase() {
-    preventDoubleClick(() => {
-        // Check if user is logged in first
-        if (!isUserLoggedIn()) {
-            showMessage('برای خرید ابتدا وارد شوید', 'info');
-            setTimeout(() => {
-                window.location.href = '../Auth/login.html';
-            }, 1500);
-            return;
-        }
-
-        const cashBtn = document.querySelector('.cash-btn');
-        cashBtn.classList.add('loading');
-
-        setTimeout(() => {
-            cashBtn.classList.remove('loading');
-            showMessage('خرید نقدی با موفقیت ثبت شد!', 'success');
-            console.log('Cash purchase initiated');
-        }, 1000);
-    });
+    showMessage('در حال هدایت به صفحه خرید...', 'success');
+    setTimeout(() => {
+        window.location.href = '../Shopping/shopping.html';
+    }, 1500);
 }
 
 /**
- * Handle credit purchase button click
+ * Handle credit purchase
  */
 function handleCreditPurchase() {
-    preventDoubleClick(() => {
-        // Check if user is logged in first
-        if (!isUserLoggedIn()) {
-            showMessage('برای خرید ابتدا وارد شوید', 'info');
-            setTimeout(() => {
-                window.location.href = '../Auth/login.html';
-            }, 1500);
-            return;
-        }
-
-        const creditBtn = document.querySelector('.credit-btn');
-        creditBtn.classList.add('loading');
-
-        setTimeout(() => {
-            creditBtn.classList.remove('loading');
-            showMessage('خرید نسیه با موفقیت ثبت شد!', 'success');
-            console.log('Credit purchase initiated');
-        }, 1000);
-    });
+    showMessage('در حال هدایت به صفحه خرید...', 'success');
+    setTimeout(() => {
+        window.location.href = '../Shopping/shopping.html';
+    }, 1500);
 }
 
 /**
@@ -271,34 +241,34 @@ function preventDoubleClick(func) {
     }, 2000);
 }
 // Load main page content from localStorage
-        function loadMainPageContent() {
-            const saved = localStorage.getItem('mainPageContent');
-            if (saved) {
-                const mainPageContent = JSON.parse(saved);
+function loadMainPageContent() {
+    const saved = localStorage.getItem('mainPageContent');
+    if (saved) {
+        const mainPageContent = JSON.parse(saved);
 
-                // Update cash section
-                const cashPriceElement = document.getElementById('cashPrice');
-                const cashStockElement = document.getElementById('cashStock');
+        // Update cash section
+        const cashPriceElement = document.getElementById('cashPrice');
+        const cashStockElement = document.getElementById('cashStock');
 
-                if (cashPriceElement) {
-                    cashPriceElement.textContent = new Intl.NumberFormat('fa-IR').format(mainPageContent.cashPrice) + ' تومان';
-                }
-                if (cashStockElement) {
-                    cashStockElement.textContent = mainPageContent.cashStock + ' کیلو';
-                }
-
-                // Update credit section
-                const creditPriceElement = document.getElementById('creditPrice');
-                const creditStockElement = document.getElementById('creditStock');
-
-                if (creditPriceElement) {
-                    creditPriceElement.textContent = new Intl.NumberFormat('fa-IR').format(mainPageContent.creditPrice) + ' تومان';
-                }
-                if (creditStockElement) {
-                    creditStockElement.textContent = mainPageContent.creditStock + ' کیلو';
-                }
-            }
+        if (cashPriceElement) {
+            cashPriceElement.textContent = new Intl.NumberFormat('fa-IR').format(mainPageContent.cashPrice) + ' تومان';
         }
+        if (cashStockElement) {
+            cashStockElement.textContent = mainPageContent.cashStock + ' کیلو';
+        }
+
+        // Update credit section
+        const creditPriceElement = document.getElementById('creditPrice');
+        const creditStockElement = document.getElementById('creditStock');
+
+        if (creditPriceElement) {
+            creditPriceElement.textContent = new Intl.NumberFormat('fa-IR').format(mainPageContent.creditPrice) + ' تومان';
+        }
+        if (creditStockElement) {
+            creditStockElement.textContent = mainPageContent.creditStock + ' کیلو';
+        }
+    }
+}
 
 function checkWorkingHoursAndLoadPage() {
     const saved = localStorage.getItem('workingHours');
@@ -336,4 +306,3 @@ function checkWorkingHoursAndLoadPage() {
 
 // اجرای چک در هنگام بارگذاری
 window.addEventListener('load', checkWorkingHoursAndLoadPage);
-
