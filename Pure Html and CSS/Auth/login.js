@@ -54,19 +54,19 @@ function handlePhoneSubmit(event) {
         } else if (userStatus === 'pending') {
             showMessage('شماره شما در انتظار تایید است. لطفاً با مدیر سیستم تماس بگیرید.', 'error');
             setTimeout(() => {
-                window.location.href = 'index.html';
+                window.location.href = '../Index/index.html';
             }, 4000);
 
         } else if (userStatus === 'deactive') {
             showMessage('حساب شما غیرفعال است. لطفاً با مدیر سیستم تماس بگیرید.', 'error');
             setTimeout(() => {
-                window.location.href = 'index.html';
+                window.location.href = '../Index/index.html';
             }, 4000);
 
         } else {
             showMessage('شماره شما در سیستم ثبت نشده است', 'error');
             setTimeout(() => {
-                window.location.href = 'index.html';
+                window.location.href = '../Index/index.html';
             }, 3000);
         }
 
