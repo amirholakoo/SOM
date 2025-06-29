@@ -199,7 +199,7 @@ let selectedProducts = [];
  * Initialize the shopping page
  */
 function initializePage() {
-    // Display user name (removed security check for development)
+    // Display username (removed security check for development)
     const userName = sessionStorage.getItem('userName') || 'کاربر';
     const userNameElement = document.getElementById('userName');
     if (userNameElement) {
@@ -592,4 +592,30 @@ function addTouchFeedback() {
 document.addEventListener('DOMContentLoaded', function () {
     initializePage();
     console.log('Shopping page loaded successfully!');
-}); 
+});
+function checkWorkingHours() {
+    const saved = localStorage.getItem('workingHours');
+    if (saved) {
+        const workingHours = JSON.parse(saved);
+
+        if (!workingHours.isActive) {
+            window.location.href = 'closed.html';
+            return;
+        }
+
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        const currentTime = currentHour * 60 + currentMinute;
+
+        const startTime = workingHours.startHour * 60 + workingHours.startMinute;
+        const endTime = workingHours.endHour * 60 + workingHours.endMinute;
+
+        if (currentTime < startTime || currentTime > endTime) {
+            window.location.href = 'closed.html';
+        }
+    }
+}
+
+// Check working hours on page load
+window.addEventListener('load', checkWorkingHours);
