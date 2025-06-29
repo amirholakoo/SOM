@@ -98,6 +98,14 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 CORS_ALLOW_ALL_ORIGINS = False            # ❌ جلوگیری از دسترسی کلی
 CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:8000,http://127.0.0.1:8000', cast=lambda v: [s.strip() for s in v.split(',')])
 
+# 🗄️ تنظیمات کش برای تولید (Redis توصیه می‌شود)
+# CACHES = {
+#     'default': {
+#         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+#         'LOCATION': 'redis://127.0.0.1:6379/1',
+#     }
+# }
+
 # 📝 تنظیمات نشست برای تولید
 SESSION_COOKIE_AGE = 3600                 # ⏰ مدت اعتبار 1 ساعت
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True    # 🚪 انقضا هنگام بستن مرورگر
