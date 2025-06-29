@@ -147,16 +147,16 @@ class User(AbstractUser, BaseModel):
                 'phone': '📞 شماره تلفن باید با 09 شروع شود'
             })
         
-        # 🔴 بررسی محدودیت Super Admin
-        if self.role == self.UserRole.SUPER_ADMIN:
-            existing_super_admins = User.objects.filter(
-                role=self.UserRole.SUPER_ADMIN
-            ).exclude(pk=self.pk).count()
-            
-            if existing_super_admins >= 2:  # حداکثر 2 Super Admin
-                raise ValidationError({
-                    'role': '🔴 حداکثر 2 Super Admin مجاز است'
-                })
+        # 👑 Super Admin هیچ محدودیتی ندارد - کامنت شده
+        # if self.role == self.UserRole.SUPER_ADMIN:
+        #     existing_super_admins = User.objects.filter(
+        #         role=self.UserRole.SUPER_ADMIN
+        #     ).exclude(pk=self.pk).count()
+        #     
+        #     if existing_super_admins >= 2:  # حداکثر 2 Super Admin
+        #         raise ValidationError({
+        #             'role': '🔴 حداکثر 2 Super Admin مجاز است'
+        #         })
     
     def save(self, *args, **kwargs):
         """
@@ -367,7 +367,13 @@ class User(AbstractUser, BaseModel):
     def is_active_user(self):
         """
         ✅ بررسی فعال بودن کاربر
+        🔴 Super Admin همیشه فعال محسوب می‌شود
         """
+        # Super Admin همیشه فعال است
+        if self.is_super_admin():
+            return True
+        
+        # سایر کاربران بر اساس وضعیت و فیلد is_active
         return self.status == self.UserStatus.ACTIVE and self.is_active
 
 

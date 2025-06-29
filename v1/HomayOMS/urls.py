@@ -10,10 +10,8 @@ from django.conf.urls.static import static
 from django.shortcuts import redirect
 
 def home_redirect(request):
-    """هدایت صفحه اصلی به داشبورد"""
-    if request.user.is_authenticated:
-        return redirect('accounts:dashboard')
-    return redirect('accounts:login')
+    """هدایت صفحه اصلی به لندینگ پیج محصولات"""
+    return redirect('core:products_landing')
 
 urlpatterns = [
     # 🎛️ پنل مدیریت جنگو
