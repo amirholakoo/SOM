@@ -383,3 +383,308 @@ body {
         transform: none;
     }
 }
+
+/* Footer styles */
+.footer-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+    padding: 40px 30px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.footer-section {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 25px;
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.footer-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: #ecf0f1;
+    text-align: center;
+    padding-bottom: 10px;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Contact Info */
+.contact-items {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.contact-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(-5px);
+}
+
+.contact-icon {
+    font-size: 1.5rem;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.contact-details {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.contact-label {
+    font-size: 0.9rem;
+    color: #bdc3c7;
+    font-weight: 500;
+}
+
+.contact-value {
+    font-size: 1rem;
+    color: #ecf0f1;
+    font-weight: 600;
+}
+
+/* Working Hours */
+.hours-info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.hours-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    transition: background 0.3s ease;
+}
+
+.hours-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.hours-label {
+    font-size: 0.95rem;
+    color: #bdc3c7;
+    font-weight: 500;
+}
+
+.hours-value {
+    font-size: 1rem;
+    color: #ecf0f1;
+    font-weight: 600;
+}
+
+/* About Us */
+.about-text {
+    font-size: 1rem;
+    line-height: 1.8;
+    color: #bdc3c7;
+    margin-bottom: 20px;
+    text-align: justify;
+}
+
+.social-links {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.social-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 45px;
+    height: 45px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    text-decoration: none;
+    font-size: 1.3rem;
+    color: white;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.social-link:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(255, 255, 255, 0.3);
+}
+
+/* Footer Bottom */
+.footer-bottom {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.footer-bottom-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.copyright {
+    font-size: 0.95rem;
+    color: #bdc3c7;
+    font-weight: 500;
+}
+
+.update-info {
+    font-size: 0.9rem;
+    color: #95a5a6;
+    font-weight: 400;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .main-title {
+        font-size: 1.8rem;
+    }
+
+    .container {
+        padding: 5px;
+    }
+
+    .section {
+        padding: 20px;
+        margin-bottom: 15px;
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+    }
+
+    .info-value {
+        font-size: 1.5rem;
+    }
+
+    .purchase-btn {
+        padding: 12px 25px;
+        font-size: 1rem;
+    }
+
+    /* Footer responsive */
+    .footer-content {
+        grid-template-columns: 1fr;
+        gap: 25px;
+        padding: 30px 20px;
+    }
+
+    .footer-section {
+        padding: 20px;
+    }
+
+    .footer-title {
+        font-size: 1.2rem;
+    }
+
+    .contact-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+
+    .contact-details {
+        align-items: center;
+    }
+
+    .hours-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 5px;
+    }
+
+    .footer-bottom-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .main-title {
+        font-size: 1.5rem;
+    }
+
+    .section-title {
+        font-size: 1.3rem;
+    }
+
+    .info-value {
+        font-size: 1.3rem;
+    }
+
+    .purchase-btn {
+        padding: 10px 20px;
+        font-size: 0.95rem;
+    }
+
+    .footer-content {
+        padding: 25px 15px;
+    }
+
+    .footer-section {
+        padding: 15px;
+    }
+
+    .contact-icon {
+        width: 35px;
+        height: 35px;
+        font-size: 1.3rem;
+    }
+
+    .social-link {
+        width: 40px;
+        height: 40px;
+        font-size: 1.2rem;
+    }
+}
+
+/* Desktop optimizations */
+@media (min-width: 1024px) {
+    .container {
+        max-width: 1200px;
+        padding: 20px;
+    }
+
+    .info-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 30px;
+    }
+
+    .main-content {
+        gap: 30px;
+    }
+
+    .section {
+        padding: 35px;
+    }
+}

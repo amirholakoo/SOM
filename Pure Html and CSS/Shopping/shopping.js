@@ -516,14 +516,34 @@ function proceedToCheckout() {
         return;
     }
 
-    // Store selected products in session storage
-    sessionStorage.setItem('selectedProducts', JSON.stringify(selectedProducts));
+    // Calculate total price
+    let totalPrice = 0;
+    let finalTotal = 0;
 
-    showMessage('در حال انتقال به صفحه نهایی...', 'success');
+    selectedProducts.forEach(product => {
+        const itemTotal = product.price * product.quantity;
+        totalPrice += itemTotal;
+    });
+
+    // Apply discount (5% for demo)
+    const discount = totalPrice * 0.05;
+    finalTotal = totalPrice - discount;
+
+    // Store order data in session storage
+    const orderData = {
+        items: selectedProducts,
+        totalPrice: totalPrice,
+        discount: discount,
+        finalTotal: finalTotal,
+        orderDate: new Date().toISOString(),
+        userId: sessionStorage.getItem('userId') || 'guest'
+    };
+
+    sessionStorage.setItem('orderData', JSON.stringify(orderData));
+
+    showMessage('در حال انتقال به درگاه پرداخت...', 'success');
     setTimeout(() => {
-        // For now, redirect back to main page
-        // In a real app, this would go to checkout page
-        window.location.href = 'index.html';
+        window.location.href = '../Payment/payment.html';
     }, 2000);
 }
 
