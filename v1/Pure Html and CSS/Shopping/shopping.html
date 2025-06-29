@@ -105,39 +105,86 @@
         </main>
 
         <footer class="footer">
-            <p>سیستم مدیریت قیمت و موجودی</p>
+            <div class="footer-content">
+                <!-- اطلاعات تماس -->
+                <div class="footer-section contact-info">
+                    <h3 class="footer-title">اطلاعات تماس</h3>
+                    <div class="contact-items">
+                        <div class="contact-item">
+                            <span class="contact-icon">📞</span>
+                            <div class="contact-details">
+                                <span class="contact-label">تلفن تماس:</span>
+                                <span class="contact-value">۰۲۱-۱۲۳۴۵۶۷۸</span>
+                            </div>
+                        </div>
+                        <div class="contact-item">
+                            <span class="contact-icon">📱</span>
+                            <div class="contact-details">
+                                <span class="contact-label">موبایل:</span>
+                                <span class="contact-value">۰۹۱۲-۳۴۵-۶۷۸۹</span>
+                            </div>
+                        </div>
+                        <div class="contact-item">
+                            <span class="contact-icon">📧</span>
+                            <div class="contact-details">
+                                <span class="contact-label">ایمیل:</span>
+                                <span class="contact-value">info@homayounpaper.com</span>
+                            </div>
+                        </div>
+                        <div class="contact-item">
+                            <span class="contact-icon">📍</span>
+                            <div class="contact-details">
+                                <span class="contact-label">آدرس:</span>
+                                <span class="contact-value">تهران، خیابان ولیعصر، پلاک ۱۲۳</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ساعات کاری -->
+                <div class="footer-section working-hours">
+                    <h3 class="footer-title">ساعات کاری</h3>
+                    <div class="hours-info">
+                        <div class="hours-item">
+                            <span class="hours-label">شنبه تا چهارشنبه:</span>
+                            <span class="hours-value">۰۸:۰۰ - ۱۸:۰۰</span>
+                        </div>
+                        <div class="hours-item">
+                            <span class="hours-label">پنج‌شنبه:</span>
+                            <span class="hours-value">۰۸:۰۰ - ۱۶:۰۰</span>
+                        </div>
+                        <div class="hours-item">
+                            <span class="hours-label">جمعه:</span>
+                            <span class="hours-value">تعطیل</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- درباره ما -->
+                <div class="footer-section about-us">
+                    <h3 class="footer-title">درباره ما</h3>
+                    <p class="about-text">
+                        کارخانه کاغذ و مقوای همایون با بیش از ۲۰ سال تجربه در تولید و فروش
+                        انواع کاغذ و مقوا، ارائه‌دهنده بهترین محصولات با کیفیت و قیمت مناسب می‌باشد.
+                    </p>
+                    <div class="social-links">
+                        <a href="#" class="social-link">📘</a>
+                        <a href="#" class="social-link">📷</a>
+                        <a href="#" class="social-link">📞</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- کپی رایت -->
+            <div class="footer-bottom">
+                <div class="footer-bottom-content">
+                    <p class="copyright">© ۱۴۰۳ کارخانه کاغذ و مقوای همایون. تمامی حقوق محفوظ است.</p>
+                    <p class="update-info">آخرین بروزرسانی: امروز</p>
+                </div>
+            </div>
         </footer>
     </div>
     <script src="shopping.js"></script>
-    <script>
-        // Check working hours when page loads
-        function checkWorkingHours() {
-            const saved = localStorage.getItem('workingHours');
-            if (saved) {
-                const workingHours = JSON.parse(saved);
-
-                if (!workingHours.isActive) {
-                    window.location.href = 'closed.html';
-                    return;
-                }
-
-                const now = new Date();
-                const currentHour = now.getHours();
-                const currentMinute = now.getMinutes();
-                const currentTime = currentHour * 60 + currentMinute;
-
-                const startTime = workingHours.startHour * 60 + workingHours.startMinute;
-                const endTime = workingHours.endHour * 60 + workingHours.endMinute;
-
-                if (currentTime < startTime || currentTime > endTime) {
-                    window.location.href = 'closed.html';
-                }
-            }
-        }
-
-        // Check working hours on page load
-        window.addEventListener('load', checkWorkingHours);
-    </script>
 </body>
 
 </html>
