@@ -1,275 +1,0 @@
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>درگاه پرداخت - کارخانه کاغد و مقوای همایون</title>
-    <link rel="stylesheet" href="payment.css">
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&display=swap" rel="stylesheet">
-</head>
-
-<body>
-    <div class="container">
-        <header class="header">
-            <div class="header-content">
-                <button class="back-btn" onclick="goBack()">
-                    <span class="back-icon">🔙</span>
-                    <span>بازگشت</span>
-                </button>
-                <h1 class="main-title">درگاه پرداخت</h1>
-                <div class="security-badge">
-                    <span class="security-icon">🔒</span>
-                    <span>پرداخت امن</span>
-                </div>
-            </div>
-        </header>
-
-        <main class="main-content">
-            <!-- بخش خلاصه سفارش -->
-            <section class="section order-summary">
-                <div class="section-header">
-                    <span class="section-icon">📋</span>
-                    <h2 class="section-title">خلاصه سفارش</h2>
-                </div>
-
-                <div class="order-details">
-                    <div class="order-items">
-                        <div class="order-item">
-                            <div class="item-info">
-                                <span class="item-name">کاغذ A4 - 80 گرم</span>
-                                <span class="item-specs">تعداد: ۵ بسته</span>
-                            </div>
-                            <div class="item-price">۱,۲۵۰,۰۰۰ تومان</div>
-                        </div>
-                        <div class="order-item">
-                            <div class="item-info">
-                                <span class="item-name">مقوای دوجداره</span>
-                                <span class="item-specs">تعداد: ۳ ورق</span>
-                            </div>
-                            <div class="item-price">۷۵۰,۰۰۰ تومان</div>
-                        </div>
-                    </div>
-
-                    <div class="order-totals">
-                        <div class="total-row">
-                            <span class="total-label">جمع کل:</span>
-                            <span class="total-value">۲,۰۰۰,۰۰۰ تومان</span>
-                        </div>
-                        <div class="total-row">
-                            <span class="total-label">تخفیف:</span>
-                            <span class="total-value discount">-۱۰۰,۰۰۰ تومان</span>
-                        </div>
-                        <div class="total-row final-total">
-                            <span class="total-label">مبلغ نهایی:</span>
-                            <span class="total-value">۱,۹۰۰,۰۰۰ تومان</span>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- انتخاب روش پرداخت -->
-            <section class="section payment-methods">
-                <div class="section-header">
-                    <span class="section-icon">💳</span>
-                    <h2 class="section-title">روش پرداخت</h2>
-                </div>
-
-                <div class="payment-options">
-                    <label class="payment-option">
-                        <input type="radio" name="payment-method" value="card" checked>
-                        <div class="option-content">
-                            <div class="option-icon">💳</div>
-                            <div class="option-info">
-                                <div class="option-title">کارت بانکی</div>
-                                <div class="option-desc">پرداخت با کارت‌های عضو شبکه شتاب</div>
-                            </div>
-                        </div>
-                    </label>
-
-                    <label class="payment-option">
-                        <input type="radio" name="payment-method" value="wallet">
-                        <div class="option-content">
-                            <div class="option-icon">📱</div>
-                            <div class="option-info">
-                                <div class="option-title">کیف پول دیجیتال</div>
-                                <div class="option-desc">پرداخت با اپلیکیشن‌های مالی</div>
-                            </div>
-                        </div>
-                    </label>
-
-                    <label class="payment-option">
-                        <input type="radio" name="payment-method" value="internet">
-                        <div class="option-content">
-                            <div class="option-icon">🌐</div>
-                            <div class="option-info">
-                                <div class="option-title">اینترنت بانک</div>
-                                <div class="option-desc">انتقال از حساب بانکی</div>
-                            </div>
-                        </div>
-                    </label>
-                </div>
-            </section>
-
-            <!-- فرم اطلاعات پرداخت -->
-            <section class="section payment-form">
-                <div class="section-header">
-                    <span class="section-icon">🔐</span>
-                    <h2 class="section-title">اطلاعات پرداخت</h2>
-                </div>
-
-                <form class="payment-form-container" id="paymentForm">
-                    <!-- فرم کارت بانکی -->
-                    <div class="form-section card-form" id="cardForm">
-                        <div class="input-group">
-                            <label class="input-label">شماره کارت</label>
-                            <input type="text" class="form-input card-number" placeholder="۱۲۳۴-۵۶۷۸-۹۰۱۲-۳۴۵۶"
-                                maxlength="19">
-                            <div class="card-types">
-                                <span class="card-type">💳 ویزا</span>
-                                <span class="card-type">💳 مسترکارت</span>
-                                <span class="card-type">💳 شتاب</span>
-                            </div>
-                        </div>
-
-                        <div class="input-row">
-                            <div class="input-group">
-                                <label class="input-label">ماه/سال انقضا</label>
-                                <input type="text" class="form-input expiry-date" placeholder="۱۲/۰۳" maxlength="5">
-                            </div>
-                            <div class="input-group">
-                                <label class="input-label">CVV2</label>
-                                <input type="password" class="form-input cvv" placeholder="۱۲۳" maxlength="4">
-                            </div>
-                        </div>
-
-                        <div class="input-group">
-                            <label class="input-label">رمز دوم (اختیاری)</label>
-                            <input type="password" class="form-input second-password" placeholder="رمز دوم کارت">
-                        </div>
-                    </div>
-
-                    <!-- فرم کیف پول -->
-                    <div class="form-section wallet-form" id="walletForm" style="display: none;">
-                        <div class="wallet-options">
-                            <button type="button" class="wallet-btn">
-                                <span class="wallet-icon">📱</span>
-                                <span>زرین پال</span>
-                            </button>
-                            <button type="button" class="wallet-btn">
-                                <span class="wallet-icon">💰</span>
-                                <span>آی‌دی پی</span>
-                            </button>
-                            <button type="button" class="wallet-btn">
-                                <span class="wallet-icon">🏦</span>
-                                <span>پی‌پال</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- فرم اینترنت بانک -->
-                    <div class="form-section internet-form" id="internetForm" style="display: none;">
-                        <div class="input-group">
-                            <label class="input-label">انتخاب بانک</label>
-                            <select class="form-select bank-select">
-                                <option value="">بانک خود را انتخاب کنید</option>
-                                <option value="mellat">بانک ملت</option>
-                                <option value="melli">بانک ملی</option>
-                                <option value="parsian">بانک پارسیان</option>
-                                <option value="saderat">بانک صادرات</option>
-                                <option value="tejarat">بانک تجارت</option>
-                            </select>
-                        </div>
-                    </div>
-                </form>
-            </section>
-
-            <!-- اطلاعات تماس -->
-            <section class="section contact-info">
-                <div class="section-header">
-                    <span class="section-icon">👤</span>
-                    <h2 class="section-title">اطلاعات تماس</h2>
-                </div>
-                
-                <div class="test-note">
-                    <p>💡 برای آزمایش: تمام فیلدها اختیاری هستند</p>
-                </div>
-                
-                <form class="contact-form">
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label class="input-label">نام</label>
-                            <input type="text" class="form-input" placeholder="نام خود را وارد کنید">
-                        </div>
-                        <div class="input-group">
-                            <label class="input-label">نام خانوادگی</label>
-                            <input type="text" class="form-input" placeholder="نام خانوادگی خود را وارد کنید">
-                        </div>
-                    </div>
-
-                    <div class="input-group">
-                        <label class="input-label">شماره موبایل</label>
-                        <input type="tel" class="form-input" placeholder="۰۹۱۲۳۴۵۶۷۸۹">
-                    </div>
-
-                    <div class="input-group">
-                        <label class="input-label">ایمیل (اختیاری)</label>
-                        <input type="email" class="form-input" placeholder="example@email.com">
-                    </div>
-                </form>
-            </section>
-
-            <!-- دکمه‌های عمل -->
-            <section class="action-section">
-                <div class="security-info">
-                    <div class="security-item">
-                        <span class="security-icon">🔒</span>
-                        <span>اتصال امن SSL</span>
-                    </div>
-                    <div class="security-item">
-                        <span class="security-icon">🛡️</span>
-                        <span>محافظت اطلاعات</span>
-                    </div>
-                    <div class="security-item">
-                        <span class="security-icon">✅</span>
-                        <span>تضمین بازپرداخت</span>
-                    </div>
-                </div>
-
-                <div class="action-buttons">
-                    <button class="cancel-btn" onclick="cancelPayment()">
-                        <span class="btn-icon">❌</span>
-                        <span>لغو پرداخت</span>
-                    </button>
-                    <button class="pay-btn" onclick="processPayment()">
-                        <span class="btn-icon">💳</span>
-                        <span>پرداخت ۱,۹۰۰,۰۰۰ تومان</span>
-                    </button>
-                </div>
-            </section>
-        </main>
-
-        <footer class="footer">
-            <div class="footer-content">
-                <p>© ۱۴۰۳ کارخانه کاغذ و مقوای همایون - پرداخت امن</p>
-                <div class="footer-badges">
-                    <span class="badge">🔒 SSL</span>
-                    <span class="badge">✅ تایید شده</span>
-                    <span class="badge">🛡️ امن</span>
-                </div>
-            </div>
-        </footer>
-
-        <!-- Loading Overlay -->
-        <div class="loading-overlay" id="loadingOverlay" style="display: none;">
-            <div class="loading-content">
-                <div class="loading-spinner"></div>
-                <p class="loading-text">در حال پردازش پرداخت...</p>
-            </div>
-        </div>
-    </div>
-
-    <script src="payment.js"></script>
-</body>
-
-</html>
