@@ -1,8 +1,6 @@
 // Functions for handling purchase button clicks
+/* Go to login page */
 
-/**
- * Go to login page
- */
 function goToLogin() {
     window.location.href = 'login.html';
 }
@@ -301,34 +299,52 @@ function preventDoubleClick(func) {
                 }
             }
         }
-
+        import getIranTimeManual from '../Admin/admin.js';
         // Check working hours when page loads
-        function checkWorkingHours() {
-            const saved = localStorage.getItem('workingHours');
-            if (saved) {
-                const workingHours = JSON.parse(saved);
+        // function getIranTimeManual() {
+        //     const now = new Date();
+        //     const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+        //     const tehranOffset = 270; // +3:30 (Iran time)
+        //     const totalMinutes = (utcMinutes + tehranOffset) % (24 * 60);
+        //     const hour = Math.floor(totalMinutes / 60);
+        //     const minute = totalMinutes % 60;
+        //     return { hour, minute };
+        // }
 
-                if (!workingHours.isActive) {
-                    window.location.href = 'closed.html';
-                    return;
-                }
+function checkWorkingHoursAndLoadPage() {
+    const saved = localStorage.getItem('workingHours');
+    if (!saved) {
+        // اگر تنظیمی وجود نداشت، فرض کنیم سیستم غیرفعال است
+        window.location.href = 'closed.html';
+        return;
+    }
 
-                const now = new Date();
-                const currentHour = now.getHours();
-                const currentMinute = now.getMinutes();
-                const currentTime = currentHour * 60 + currentMinute;
+    const workingHours = JSON.parse(saved);
 
-                const startTime = workingHours.startHour * 60 + workingHours.startMinute;
-                const endTime = workingHours.endHour * 60 + workingHours.endMinute;
+    // اگر ادمین سیستم را غیرفعال کرده باشد
+    if (!workingHours.isActive) {
+        window.location.href = 'closed.html';
+        return;
+    }
 
-                if (currentTime < startTime || currentTime > endTime) {
-                    window.location.href = 'closed.html';
-                }
-            }
-        }
+    // بررسی ساعت ایران
+    const iranTime = getIranTimeManual();
+    const currentTime = iranTime.hour * 60 + iranTime.minute;
 
-        // Check working hours on page load
-        window.addEventListener('load', function () {
-            checkWorkingHours();
-            loadMainPageContent();
-        });
+    const startTime = Number(workingHours.startHour) * 60 + Number(workingHours.startMinute);
+    const endTime = Number(workingHours.endHour) * 60 + Number(workingHours.endMinute);
+
+    // بررسی اینکه آیا داخل ساعت کاری هست یا نه
+    const isOpen = currentTime >= startTime && currentTime <= endTime;
+
+    if (!isOpen) {
+        window.location.href = 'closed.html';
+    } else {
+        // ادامه‌ی بارگذاری صفحه اصلی
+        loadMainPageContent();
+    }
+}
+
+// اجرای چک در هنگام بارگذاری
+window.addEventListener('load', checkWorkingHoursAndLoadPage);
+
