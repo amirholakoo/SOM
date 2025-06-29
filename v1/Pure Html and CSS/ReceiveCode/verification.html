@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تایید کد - کارخانه کاغذ و مقوای همایون</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="login.css">
+    <link rel="stylesheet" href="../Index/styles.css">
+    <link rel="stylesheet" href="../Auth/login.css">
     <link rel="stylesheet" href="verification.css">
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
 
@@ -14,27 +14,25 @@
 
 <body>
     <div class="container">
-        <header class="header">
+        <!-- <header class="header">
             <h1 class="main-title">تایید کد</h1>
-        </header>
+        </header> -->
 
         <main class="main-content">
             <div class="verification-container">
                 <div class="verification-card">
                     <div class="verification-header">
-                        <div class="verification-icon">📱</div>
                         <h2 class="verification-title">تایید شماره تلفن</h2>
                         <p class="verification-subtitle">کد تایید به شماره <span id="userPhoneDisplay"
                                 class="phone-display">۰۹۱۲۳۴۵۶۷۸۹</span> ارسال شد</p>
+
+                        <!-- Progress Bar -->
+                        <div class="progress-container">
+                            <div class="progress-bar" id="progressBar"></div>
+                        </div>
                     </div>
 
                     <div class="verification-content">
-                        <!-- Step Indicator -->
-                        <div class="step-indicator">
-                            <div class="step active" id="step1">۱</div>
-                            <div class="step pending" id="step2">۲</div>
-                        </div>
-
                         <!-- Step 1: Code Display -->
                         <div class="step-content active" id="step1Content">
                             <div class="code-display-section">
@@ -50,14 +48,9 @@
                             </div>
 
                             <div class="action-buttons">
-                                <button class="action-btn primary-btn" onclick="copyCode()" id="copyBtn">
+                                <button class="action-btn primary-btn" onclick="copyCodeAndContinue()" id="copyBtn">
                                     <span class="btn-icon">📋</span>
-                                    <span class="btn-text">کپی کد</span>
-                                </button>
-
-                                <button class="action-btn secondary-btn" onclick="goToStep2()" id="verifyBtn">
-                                    <span class="btn-icon">✅</span>
-                                    <span class="btn-text">ادامه به تایید</span>
+                                    <span class="btn-text">کپی کد و ادامه</span>
                                 </button>
                             </div>
 
@@ -116,11 +109,8 @@
                     </div>
                 </div>
             </div>
-        </main>
 
-        <footer class="footer">
-            <p>سیستم مدیریت قیمت و موجودی</p>
-        </footer>
+        </main>
     </div>
 
     <script src="verification.js"></script>
