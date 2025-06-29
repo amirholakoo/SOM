@@ -70,7 +70,7 @@ function handleCashPurchase() {
         if (!isUserLoggedIn()) {
             showMessage('برای خرید ابتدا وارد شوید', 'info');
             setTimeout(() => {
-                window.location.href = 'login.html';
+                window.location.href = '../Auth/login.html';
             }, 1500);
             return;
         }
@@ -95,7 +95,7 @@ function handleCreditPurchase() {
         if (!isUserLoggedIn()) {
             showMessage('برای خرید ابتدا وارد شوید', 'info');
             setTimeout(() => {
-                window.location.href = 'login.html';
+                window.location.href = '../Auth/login.html';
             }, 1500);
             return;
         }
@@ -299,17 +299,6 @@ function preventDoubleClick(func) {
                 }
             }
         }
-        import getIranTimeManual from '../Admin/admin.js';
-        // Check working hours when page loads
-        // function getIranTimeManual() {
-        //     const now = new Date();
-        //     const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
-        //     const tehranOffset = 270; // +3:30 (Iran time)
-        //     const totalMinutes = (utcMinutes + tehranOffset) % (24 * 60);
-        //     const hour = Math.floor(totalMinutes / 60);
-        //     const minute = totalMinutes % 60;
-        //     return { hour, minute };
-        // }
 
 function checkWorkingHoursAndLoadPage() {
     const saved = localStorage.getItem('workingHours');
