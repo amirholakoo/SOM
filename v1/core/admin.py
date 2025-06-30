@@ -107,6 +107,22 @@ class CustomerAdmin(admin.ModelAdmin):
         return obj.is_active()  # Return boolean value for Django admin
     is_active.short_description = "📊 وضعیت فعال"
     is_active.boolean = True  # نمایش به صورت آیکون بولین
+    
+    def has_add_permission(self, request):
+        """➕ مجوز اضافه کردن مشتری"""
+        return request.user.is_superuser or (hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()) or request.user.has_perm('core.add_customer')
+    
+    def has_change_permission(self, request, obj=None):
+        """✏️ مجوز تغییر مشتری"""
+        return request.user.is_superuser or (hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()) or request.user.has_perm('core.change_customer')
+    
+    def has_delete_permission(self, request, obj=None):
+        """🗑️ مجوز حذف مشتری"""
+        return request.user.is_superuser or (hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()) or request.user.has_perm('core.delete_customer')
+    
+    def has_view_permission(self, request, obj=None):
+        """👁️ مجوز مشاهده مشتری"""
+        return request.user.is_superuser or (hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()) or request.user.has_perm('core.view_customer')
 
 
 @admin.register(Product)
@@ -344,6 +360,35 @@ class ProductAdmin(admin.ModelAdmin):
         
         super().save_model(request, obj, form, change)
 
+    def get_queryset(self, request):
+        """
+        👑 Super Admin می‌تواند همه محصولات را ببیند
+        """
+        queryset = super().get_queryset(request)
+        
+        # 👑 Super Admin دسترسی کامل دارد
+        if request.user.is_superuser or (hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()):
+            return queryset
+        
+        # برای سایر کاربران محدودیت اعمال می‌شود (در صورت نیاز)
+        return queryset
+    
+    def has_add_permission(self, request):
+        """➕ مجوز اضافه کردن محصول"""
+        return request.user.is_superuser or (hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()) or request.user.has_perm('core.add_product')
+    
+    def has_change_permission(self, request, obj=None):
+        """✏️ مجوز تغییر محصول"""
+        return request.user.is_superuser or (hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()) or request.user.has_perm('core.change_product')
+    
+    def has_delete_permission(self, request, obj=None):
+        """🗑️ مجوز حذف محصول"""
+        return request.user.is_superuser or (hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()) or request.user.has_perm('core.delete_product')
+    
+    def has_view_permission(self, request, obj=None):
+        """👁️ مجوز مشاهده محصول"""
+        return request.user.is_superuser or (hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()) or request.user.has_perm('core.view_product')
+
 
 class OrderItemInline(admin.TabularInline):
     """
@@ -352,7 +397,7 @@ class OrderItemInline(admin.TabularInline):
     model = OrderItem
     extra = 0
     readonly_fields = ['total_price']
-    fields = ['product', 'quantity', 'unit_price', 'total_price', 'notes']
+    fields = ['product', 'quantity', 'unit_price', 'payment_method', 'total_price', 'notes']
 
 
 @admin.register(Order)
@@ -475,7 +520,8 @@ class OrderAdmin(admin.ModelAdmin):
         
         # ثبت لاگ
         action = 'UPDATE' if change else 'CREATE'
-        description = f'{"ویرایش" if change else "ایجاد"} سفارش {obj.order_number}'
+        action_text = 'ویرایش' if change else 'ایجاد'
+        description = f'{action_text} سفارش {obj.order_number}'
         
         ActivityLog.log_activity(
             user=request.user,
@@ -487,6 +533,22 @@ class OrderAdmin(admin.ModelAdmin):
             order_status=obj.status,
             final_amount=float(obj.final_amount)
         )
+
+    def has_add_permission(self, request):
+        """➕ مجوز اضافه کردن سفارش"""
+        return request.user.is_superuser or (hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()) or request.user.has_perm('core.add_order')
+    
+    def has_change_permission(self, request, obj=None):
+        """✏️ مجوز تغییر سفارش"""
+        return request.user.is_superuser or (hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()) or request.user.has_perm('core.change_order')
+    
+    def has_delete_permission(self, request, obj=None):
+        """🗑️ مجوز حذف سفارش"""
+        return request.user.is_superuser or (hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()) or request.user.has_perm('core.delete_order')
+    
+    def has_view_permission(self, request, obj=None):
+        """👁️ مجوز مشاهده سفارش"""
+        return request.user.is_superuser or (hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()) or request.user.has_perm('core.view_order')
 
 
 @admin.register(OrderItem)
@@ -500,11 +562,13 @@ class OrderItemAdmin(admin.ModelAdmin):
         'product_display',
         'quantity',
         'unit_price_display',
+        'payment_method_display',
         'total_price_display',
     ]
     
     list_filter = [
         'order__status',
+        'payment_method',
         'product__location',
         'created_at',
     ]
@@ -531,6 +595,11 @@ class OrderItemAdmin(admin.ModelAdmin):
         """💰 قیمت واحد"""
         return f"💰 {obj.unit_price:,.0f} تومان"
     unit_price_display.short_description = "💰 قیمت واحد"
+    
+    def payment_method_display(self, obj):
+        """💳 نمایش روش پرداخت"""
+        return f"💳 {obj.payment_method}"
+    payment_method_display.short_description = "💳 روش پرداخت"
     
     def total_price_display(self, obj):
         """💵 قیمت کل"""

@@ -10,6 +10,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
 from HomayOMS.baseModel import BaseModel
 import json
+from decimal import Decimal
 
 User = get_user_model()
 
@@ -30,13 +31,21 @@ class Customer(BaseModel):
         )
     """
     
+    # 📊 گزینه‌های وضعیت مشتری
+    STATUS_CHOICES = [
+        ('Active', '✅ فعال'),
+        ('Inactive', '⏸️ غیرفعال'),
+        ('Suspended', '🚫 معلق'),
+        ('Blocked', '🔒 مسدود'),
+    ]
+    
     # 📊 وضعیت مشتری
     status = models.CharField(
         max_length=255, 
-        blank=True, 
+        choices=STATUS_CHOICES,
         default='Active',
         verbose_name="📊 وضعیت مشتری",
-        help_text="وضعیت فعلی مشتری در سیستم (Active, Inactive, Suspended)"
+        help_text="وضعیت فعلی مشتری در سیستم"
     )
     
     # 👤 نام مشتری (اجباری)
@@ -363,14 +372,14 @@ class Product(BaseModel):
         📐 محاسبه مساحت کل محصول
         📏 محاسبه مساحت بر اساس عرض و طول
         """
-        return (self.width / 1000) * self.length  # تبدیل میلی‌متر به متر
+        return (Decimal(self.width) / Decimal('1000')) * Decimal(self.length)  # تبدیل میلی‌متر به متر
     
     def get_total_weight(self):
         """
         ⚖️ محاسبه وزن کل محصول
         🧮 محاسبه وزن بر اساس مساحت و GSM
         """
-        return self.get_total_area() * self.gsm / 1000  # تبدیل گرم به کیلوگرم
+        return self.get_total_area() * Decimal(self.gsm) / Decimal('1000')  # تبدیل گرم به کیلوگرم
     
     def is_available(self):
         """
@@ -920,9 +929,17 @@ class OrderItem(BaseModel):
     📦 مدل آیتم سفارش - اقلام داخل هر سفارش
     
     🎯 این مدل برای ذخیره جزئیات محصولات داخل هر سفارش استفاده می‌شود
-    📋 شامل محصول، تعداد، قیمت واحد و قیمت کل
+    📋 شامل محصول، تعداد، قیمت واحد، قیمت کل و نوع پرداخت
     ⏰ دارای فیلدهای created_at و updated_at از BaseModel
     """
+    
+    # 💳 روش پرداخت برای این آیتم
+    PAYMENT_METHOD_CHOICES = [
+        ('Cash', '💵 نقدی'),
+        ('Terms', '📅 قسطی'),
+        ('Bank_Transfer', '🏦 حواله بانکی'),
+        ('Check', '📝 چک'),
+    ]
     
     # 🛒 سفارش مربوطه
     order = models.ForeignKey(
@@ -962,6 +979,15 @@ class OrderItem(BaseModel):
         decimal_places=2,
         verbose_name="💵 قیمت کل (تومان)",
         help_text="قیمت کل این آیتم (تعداد × قیمت واحد)"
+    )
+    
+    # 💳 نوع پرداخت این آیتم
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PAYMENT_METHOD_CHOICES,
+        default='Cash',
+        verbose_name="💳 نوع پرداخت",
+        help_text="نوع پرداخت انتخابی برای این محصول"
     )
     
     # 📝 توضیحات آیتم
@@ -1049,6 +1075,7 @@ class OrderItem(BaseModel):
             'quantity': self.quantity,
             'unit_price': f"{self.unit_price:,.0f} تومان",
             'total_price': f"{self.total_price:,.0f} تومان",
+            'payment_method': self.get_payment_method_display(),
             'total_weight': f"{self.get_total_weight():.2f} کیلوگرم",
             'total_area': f"{self.get_total_area():.2f} متر مربع"
         }

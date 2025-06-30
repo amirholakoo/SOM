@@ -188,7 +188,7 @@
                         {% for item in cart_items %}
                             <div class="cart-item">
                                 <div class="row align-items-center">
-                                    <div class="col-md-6">
+                                    <div class="col-md-5">
                                         <div class="item-details">
                                             <h5>📦 {{ item.product.reel_number }}</h5>
                                             <p class="text-muted mb-1">📍 {{ item.product.get_location_display }}</p>
@@ -197,7 +197,7 @@
                                         </div>
                                     </div>
                                     
-                                    <div class="col-md-3">
+                                    <div class="col-md-2">
                                         <div class="quantity-controls">
                                             <button class="quantity-btn" onclick="updateQuantity('{{ item.cart_key }}', -1)">−</button>
                                             <div class="quantity-display">{{ item.quantity }}</div>
@@ -205,7 +205,17 @@
                                         </div>
                                     </div>
                                     
-                                    <div class="col-md-2">
+                                    <div class="col-md-3">
+                                        <div class="mb-2">
+                                            <label class="form-label" style="color: #2c3e50; font-weight: bold; font-size: 0.9rem;">💳 نوع پرداخت:</label>
+                                            <select class="form-select form-select-sm" name="payment_method_{{ item.cart_key }}" 
+                                                    onchange="updatePaymentMethod('{{ item.cart_key }}', this.value)">
+                                                <option value="Cash" {% if item.payment_method == 'Cash' %}selected{% endif %}>💵 نقدی</option>
+                                                <option value="Terms" {% if item.payment_method == 'Terms' %}selected{% endif %}>📅 قسطی</option>
+                                                <option value="Bank_Transfer" {% if item.payment_method == 'Bank_Transfer' %}selected{% endif %}>🏦 حواله بانکی</option>
+                                                <option value="Check" {% if item.payment_method == 'Check' %}selected{% endif %}>📝 چک</option>
+                                            </select>
+                                        </div>
                                         <div class="price-tag">
                                             💰 {{ item.total_price|floatformat:0 }} ت
                                         </div>
@@ -239,37 +249,21 @@
 
                     <!-- Checkout Form -->
                     <div class="checkout-form">
-                        <h4 style="color: #2c3e50; margin-bottom: 1.5rem;">💳 انتخاب روش پرداخت</h4>
+                        <h4 style="color: #2c3e50; margin-bottom: 1.5rem;">✅ تسویه حساب</h4>
                         
                         <form method="post" action="{% url 'core:checkout' %}">
                             {% csrf_token %}
                             
-                            <!-- Payment Method Selection -->
-                            <div class="payment-methods">
-                                {% for value, label in payment_methods %}
-                                    <div class="payment-method-card" onclick="selectPaymentMethod('{{ value }}')">
-                                        <input type="radio" name="payment_method" value="{{ value }}" id="payment_{{ value }}" 
-                                               {% if forloop.first %}checked{% endif %} style="display: none;">
-                                        <label for="payment_{{ value }}" style="cursor: pointer; width: 100%; margin: 0;">
-                                            <div class="d-flex align-items-center">
-                                                <div class="me-3" style="font-size: 1.5rem;">
-                                                    {% if value == 'Cash' %}💵
-                                                    {% elif value == 'Terms' %}📅
-                                                    {% elif value == 'Bank_Transfer' %}🏦
-                                                    {% elif value == 'Check' %}📝
-                                                    {% endif %}
-                                                </div>
-                                                <div>
-                                                    <strong>{{ label }}</strong>
-                                                </div>
-                                            </div>
-                                        </label>
-                                    </div>
-                                {% endfor %}
+                            <!-- Payment Methods Summary -->
+                            <div class="mb-3">
+                                <h6 style="color: #2c3e50; margin-bottom: 1rem;">📊 خلاصه انواع پرداخت:</h6>
+                                <div class="payment-summary" id="payment-summary">
+                                    <!-- This will be populated by JavaScript -->
+                                </div>
                             </div>
 
                             <!-- Delivery Address -->
-                            <div class="mb-3 mt-3">
+                            <div class="mb-3">
                                 <label class="form-label" style="color: #2c3e50; font-weight: bold;">🚚 آدرس تحویل:</label>
                                 <textarea name="delivery_address" class="form-control" rows="3" 
                                           placeholder="آدرس تحویل سفارش (اختیاری)">{% if customer %}{{ customer.address }}{% endif %}</textarea>
@@ -309,18 +303,62 @@
 
 {% block extra_js %}
 <script>
-// Payment Method Selection
-function selectPaymentMethod(value) {
-    // Remove selected class from all cards
-    document.querySelectorAll('.payment-method-card').forEach(card => {
-        card.classList.remove('selected');
+// Update Payment Method for individual items
+function updatePaymentMethod(cartKey, paymentMethod) {
+    fetch('/core/update-cart-payment-method/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+            cart_key: cartKey,
+            payment_method: paymentMethod
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updatePaymentSummary();
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('خطا در به‌روزرسانی نوع پرداخت');
+    });
+}
+
+// Update Payment Summary
+function updatePaymentSummary() {
+    const paymentSummary = {};
+    const selects = document.querySelectorAll('select[name^="payment_method_"]');
+    
+    selects.forEach(select => {
+        const method = select.value;
+        const methodText = select.options[select.selectedIndex].text;
+        
+        if (!paymentSummary[method]) {
+            paymentSummary[method] = {
+                label: methodText,
+                count: 0
+            };
+        }
+        paymentSummary[method].count++;
     });
     
-    // Add selected class to clicked card
-    event.currentTarget.classList.add('selected');
+    let summaryHTML = '';
+    for (const [method, data] of Object.entries(paymentSummary)) {
+        summaryHTML += `
+            <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background: #f8f9fa; border-radius: 8px;">
+                <span>${data.label}</span>
+                <span class="badge bg-primary">${data.count} محصول</span>
+            </div>
+        `;
+    }
     
-    // Select the radio button
-    document.getElementById(`payment_${value}`).checked = true;
+    document.getElementById('payment-summary').innerHTML = summaryHTML;
 }
 
 // Update Quantity
@@ -378,12 +416,9 @@ function removeItem(cartKey) {
     }
 }
 
-// Auto-select first payment method
+// Initialize payment summary on page load
 document.addEventListener('DOMContentLoaded', function() {
-    const firstPaymentCard = document.querySelector('.payment-method-card');
-    if (firstPaymentCard) {
-        firstPaymentCard.classList.add('selected');
-    }
+    updatePaymentSummary();
 });
 </script>
 {% endblock %} 

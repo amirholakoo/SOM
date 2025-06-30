@@ -4,19 +4,20 @@
 📦 مدیریت محصولات و سیستم لاگ‌گیری
 """
 
-from django.shortcuts import render, get_object_or_404, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, permission_required
 from django.http import JsonResponse, HttpResponse, Http404
 from django.core.paginator import Paginator
 from django.db.models import Q, Count, Sum, Avg
 from django.utils import timezone
-from accounts.permissions import check_user_permission
+from accounts.permissions import check_user_permission, super_admin_permission_required
 from .models import Customer, Product, ActivityLog, Order, OrderItem, WorkingHours
 from accounts.models import User
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
 import json
 from django.urls import reverse
 from django.contrib.auth import authenticate, login
@@ -24,6 +25,7 @@ from datetime import datetime, timedelta
 import qrcode
 from io import BytesIO
 import base64
+import requests
 
 
 def get_client_ip(request):
@@ -114,7 +116,7 @@ def finance_dashboard_view(request):
 
 
 @login_required
-@permission_required('accounts.manage_inventory', raise_exception=True)
+@super_admin_permission_required('manage_inventory')
 def inventory_list_view(request):
     """📦 لیست موجودی"""
     
@@ -133,9 +135,9 @@ def inventory_list_view(request):
 
 
 @login_required
-@permission_required('accounts.manage_orders', raise_exception=True)
+@super_admin_permission_required('manage_orders')
 def orders_list_view(request):
-    """📋 لیست سفارشات"""
+    """📋 لیست سفارشات با فیلتر و جستجو"""
     
     # 📜 ثبت لاگ مشاهده سفارشات
     ActivityLog.log_activity(
@@ -147,14 +149,75 @@ def orders_list_view(request):
         severity='LOW'
     )
     
-    context = {'title': '📋 مدیریت سفارشات'}
+    # شروع با تمام سفارشات
+    orders = Order.objects.select_related('customer', 'created_by').prefetch_related('order_items')
+    
+    # دریافت پارامترهای فیلتر از URL
+    search_query = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    payment_filter = request.GET.get('payment', '').strip()
+    date_from = request.GET.get('date_from', '').strip()
+    date_to = request.GET.get('date_to', '').strip()
+    
+    # اعمال فیلتر جستجو
+    if search_query:
+        orders = orders.filter(
+            Q(order_number__icontains=search_query) |
+            Q(customer__customer_name__icontains=search_query) |
+            Q(customer__phone__icontains=search_query) |
+            Q(notes__icontains=search_query)
+        )
+    
+    # اعمال فیلتر وضعیت
+    if status_filter:
+        orders = orders.filter(status=status_filter)
+    
+    # اعمال فیلتر نوع پرداخت
+    if payment_filter:
+        orders = orders.filter(payment_method=payment_filter)
+    
+    # اعمال فیلتر تاریخ
+    if date_from:
+        try:
+            from_date = datetime.strptime(date_from, '%Y-%m-%d').date()
+            orders = orders.filter(created_at__date__gte=from_date)
+        except ValueError:
+            pass
+    
+    if date_to:
+        try:
+            to_date = datetime.strptime(date_to, '%Y-%m-%d').date()
+            orders = orders.filter(created_at__date__lte=to_date)
+        except ValueError:
+            pass
+    
+    # مرتب‌سازی
+    orders = orders.order_by('-created_at')
+    
+    # 📄 صفحه‌بندی
+    paginator = Paginator(orders, 25)
+    page = request.GET.get('page')
+    page_obj = paginator.get_page(page)
+    
+    context = {
+        'title': '📋 مدیریت سفارشات',
+        'page_obj': page_obj,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'payment_filter': payment_filter,
+        'date_from': date_from,
+        'date_to': date_to,
+        'status_choices': Order.ORDER_STATUS_CHOICES,
+        'payment_choices': Order.PAYMENT_METHOD_CHOICES,
+        'total_orders': orders.count(),
+    }
     return render(request, 'core/orders_list.html', context)
 
 
 @login_required
-@permission_required('accounts.manage_customers', raise_exception=True)
+@super_admin_permission_required('manage_customers')
 def customers_list_view(request):
-    """👥 لیست مشتریان"""
+    """👥 لیست مشتریان با فیلتر و جستجو"""
     
     # 📜 ثبت لاگ مشاهده مشتریان
     ActivityLog.log_activity(
@@ -166,26 +229,42 @@ def customers_list_view(request):
         severity='LOW'
     )
     
-    # 👥 دریافت مشتریان با جستجو
-    search_query = request.GET.get('search', '')
+    # شروع با تمام مشتریان
     customers = Customer.objects.all()
     
+    # دریافت پارامترهای فیلتر از URL
+    search_query = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    
+    # اعمال فیلتر جستجو
     if search_query:
         customers = customers.filter(
             Q(customer_name__icontains=search_query) |
             Q(phone__icontains=search_query) |
-            Q(national_id__icontains=search_query)
+            Q(national_id__icontains=search_query) |
+            Q(economic_code__icontains=search_query) |
+            Q(address__icontains=search_query)
         )
+    
+    # اعمال فیلتر وضعیت
+    if status_filter:
+        customers = customers.filter(status=status_filter)
+    
+    # مرتب‌سازی
+    customers = customers.order_by('-created_at')
     
     # 📄 صفحه‌بندی
     paginator = Paginator(customers, 25)
     page = request.GET.get('page')
-    customers = paginator.get_page(page)
+    page_obj = paginator.get_page(page)
     
     context = {
         'title': '👥 مدیریت مشتریان',
-        'customers': customers,
+        'page_obj': page_obj,
         'search_query': search_query,
+        'status_filter': status_filter,
+        'status_choices': Customer.STATUS_CHOICES,
+        'total_customers': customers.count(),
     }
     return render(request, 'core/customers_list.html', context)
 
@@ -210,7 +289,7 @@ def finance_overview_view(request):
 
 
 @login_required
-@permission_required('accounts.manage_inventory', raise_exception=True)
+@super_admin_permission_required('manage_inventory')
 def products_list_view(request):
     """📦 لیست محصولات"""
     
@@ -273,7 +352,7 @@ def products_list_view(request):
 
 
 @login_required
-@permission_required('accounts.manage_inventory', raise_exception=True)
+@super_admin_permission_required('manage_inventory')
 def product_detail_view(request, product_id):
     """📦 جزئیات محصول"""
     
@@ -892,7 +971,8 @@ def cart_view(request):
                 'product': product,
                 'quantity': item['quantity'],
                 'unit_price': item['unit_price'],
-                'total_price': item_total
+                'total_price': item_total,
+                'payment_method': item.get('payment_method', 'Cash')  # Default to Cash
             })
             total_amount += item_total
         except Product.DoesNotExist:
@@ -940,10 +1020,10 @@ def checkout_view(request):
             }
         )
         
-        # ایجاد سفارش
+        # ایجاد سفارش - استفاده از پیش‌فرض "Mixed" برای سفارشات با چند نوع پرداخت
         order = Order.objects.create(
             customer=customer,
-            payment_method=request.POST.get('payment_method', 'Cash'),
+            payment_method='Cash',  # پیش‌فرض - حالا در OrderItem نوع واقعی ذخیره می‌شود
             notes=request.POST.get('notes', ''),
             delivery_address=request.POST.get('delivery_address', ''),
             created_by=request.user
@@ -957,7 +1037,8 @@ def checkout_view(request):
                     order=order,
                     product=product,
                     quantity=item['quantity'],
-                    unit_price=item['unit_price']
+                    unit_price=item['unit_price'],
+                    payment_method=item.get('payment_method', 'Cash')  # استفاده از payment_method آیتم
                 )
                 
                 # تغییر وضعیت محصول به فروخته شده
@@ -1107,4 +1188,57 @@ def remove_from_cart_view(request):
         return JsonResponse({
             'success': False,
             'message': '❌ خطا در حذف محصول'
+        })
+
+
+@login_required
+@require_http_methods(["POST"])
+def update_cart_payment_method_view(request):
+    """
+    💳 تغییر نوع پرداخت محصول در سبد خرید
+    """
+    try:
+        data = json.loads(request.body)
+        cart_key = data.get('cart_key')
+        payment_method = data.get('payment_method')
+        
+        if not cart_key or not payment_method:
+            return JsonResponse({
+                'success': False,
+                'message': '❌ اطلاعات ناقص ارسال شده است'
+            })
+        
+        # بررسی معتبر بودن payment method
+        valid_methods = [choice[0] for choice in OrderItem.PAYMENT_METHOD_CHOICES]
+        if payment_method not in valid_methods:
+            return JsonResponse({
+                'success': False,
+                'message': '❌ نوع پرداخت انتخابی معتبر نیست'
+            })
+        
+        cart = request.session.get('cart', {})
+        
+        if cart_key in cart:
+            cart[cart_key]['payment_method'] = payment_method
+            request.session['cart'] = cart
+            
+            return JsonResponse({
+                'success': True,
+                'message': '✅ نوع پرداخت به‌روزرسانی شد'
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'message': '❌ محصول در سبد خرید یافت نشد'
+            })
+            
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'message': '❌ فرمت داده‌های ارسالی نامعتبر است'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': '❌ خطا در به‌روزرسانی نوع پرداخت'
         })

@@ -14,8 +14,8 @@ def home_redirect(request):
     return redirect('core:products_landing')
 
 urlpatterns = [
-    # 🎛️ پنل مدیریت جنگو
-    path('admin/', admin.site.urls),
+    # 🎛️ پنل مدیریت جنگو (مسیر امنیتی)
+    path('DJsecretAdmin/', admin.site.urls),
     
     # 🔐 اپلیکیشن حساب‌های کاربری
     path('accounts/', include('accounts.urls')),
@@ -31,3 +31,9 @@ urlpatterns = [
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+# 🚨 تعریف handler های خطا
+handler404 = 'HomayOMS.views.handler404'
+handler500 = 'HomayOMS.views.handler500'
+handler403 = 'HomayOMS.views.handler403'
+handler400 = 'HomayOMS.views.handler400'

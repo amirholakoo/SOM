@@ -5,21 +5,21 @@
 """
 
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib.auth import authenticate, login, logout
+from django.http import JsonResponse, HttpResponseRedirect
 from django.contrib import messages
-from django.http import JsonResponse
+from django.core.paginator import Paginator
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
-from django.core.paginator import Paginator
-from django.db.models import Q
-import json
-import random
+from django.urls import reverse
+from .models import User
+from .permissions import check_user_permission, super_admin_permission_required
+from core.models import Customer, ActivityLog
 import string
+import random
 from datetime import timedelta
-
-from .models import User, UserSession
-from core.models import ActivityLog
+from django.db.models import Q
 
 
 def login_view(request):
@@ -110,7 +110,6 @@ def customer_dashboard_view(request):
         return redirect('accounts:dashboard')
     
     # دریافت اطلاعات مشتری مرتبط
-    from core.models import Customer
     customer = Customer.objects.filter(
         customer_name=request.user.get_full_name() or request.user.username
     ).first()
@@ -159,10 +158,40 @@ def change_password_view(request):
 
 
 @login_required
-@permission_required('accounts.manage_all_users', raise_exception=True)
+@super_admin_permission_required('accounts.manage_all_users')
 def user_list_view(request):
-    """👥 لیست کاربران"""
-    users = User.objects.all().order_by('-created_at')
+    """👥 لیست کاربران با فیلتر و جستجو"""
+    
+    # شروع با تمام کاربران
+    users = User.objects.all()
+    
+    # دریافت پارامترهای فیلتر از URL
+    search_query = request.GET.get('search', '').strip()
+    role_filter = request.GET.get('role', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    
+    # اعمال فیلتر جستجو
+    if search_query:
+        users = users.filter(
+            Q(username__icontains=search_query) |
+            Q(first_name__icontains=search_query) |
+            Q(last_name__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(phone__icontains=search_query)
+        )
+    
+    # اعمال فیلتر نقش
+    if role_filter and role_filter in [choice[0] for choice in User.UserRole.choices]:
+        users = users.filter(role=role_filter)
+    
+    # اعمال فیلتر وضعیت
+    if status_filter and status_filter in [choice[0] for choice in User.UserStatus.choices]:
+        users = users.filter(status=status_filter)
+    
+    # مرتب‌سازی
+    users = users.order_by('-created_at')
+    
+    # صفحه‌بندی
     paginator = Paginator(users, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -171,12 +200,16 @@ def user_list_view(request):
         'page_obj': page_obj,
         'user_roles': User.UserRole.choices,
         'user_statuses': User.UserStatus.choices,
+        'search_query': search_query,
+        'role_filter': role_filter,
+        'status_filter': status_filter,
+        'total_users': users.count(),
     }
     return render(request, 'accounts/user_list.html', context)
 
 
 @login_required
-@permission_required('accounts.manage_all_users', raise_exception=True)
+@super_admin_permission_required('accounts.manage_all_users')
 def user_detail_view(request, user_id):
     """👤 جزئیات کاربر"""
     user_obj = get_object_or_404(User, id=user_id)
@@ -185,6 +218,7 @@ def user_detail_view(request, user_id):
 
 
 @login_required
+@super_admin_permission_required('accounts.manage_all_users')
 @require_http_methods(["POST"])
 def update_user_status(request, user_id):
     """📊 تغییر وضعیت کاربر"""
@@ -224,27 +258,53 @@ def customer_sms_login_view(request):
     📱 ورود مشتری با SMS - مرحله اول: ارسال شماره تلفن
     🔐 سیستم احراز هویت بر اساس شماره موبایل و کد تایید
     """
+    print("\n" + "="*60)
+    print("🚨 DEBUG: customer_sms_login_view called")
+    print(f"🚨 DEBUG: Method: {request.method}")
+    print(f"🚨 DEBUG: URL: {request.path}")
+    print("="*60)
+    
     if request.method == 'POST':
         phone = request.POST.get('phone', '').strip()
+        print(f"🚨 DEBUG: Phone from POST: '{phone}'")
         
         # اعتبارسنجی شماره تلفن
         if not phone:
+            print("❌ DEBUG: No phone provided")
             messages.error(request, '📱 لطفاً شماره تلفن خود را وارد کنید')
             return render(request, 'accounts/customer_sms_login.html')
         
         # بررسی فرمت شماره تلفن ایرانی
         if not phone.startswith('09') or len(phone) != 11:
+            print(f"❌ DEBUG: Invalid phone format: {phone}")
             messages.error(request, '📱 شماره تلفن باید با 09 شروع شده و 11 رقم باشد')
             return render(request, 'accounts/customer_sms_login.html')
         
+        print(f"✅ DEBUG: Phone format is valid: {phone}")
+        
         try:
             # جستجوی کاربر بر اساس شماره تلفن
+            print(f"🔍 DEBUG: Searching for user with phone: {phone}")
+            print(f"🔍 DEBUG: UserRole.CUSTOMER = {User.UserRole.CUSTOMER}")
+            
+            # Test the query step by step
+            user_exists = User.objects.filter(phone=phone).exists()
+            print(f"🔍 DEBUG: User with phone exists: {user_exists}")
+            
+            if user_exists:
+                user = User.objects.get(phone=phone)
+                print(f"🔍 DEBUG: Found user: {user.username}, role: {user.role}")
+            
             user = User.objects.get(phone=phone, role=User.UserRole.CUSTOMER)
+            print(f"✅ DEBUG: User found: {user.username}")
             
             # بررسی فعال بودن کاربر
             if not user.is_active_user():
+                print("❌ DEBUG: User is not active")
                 messages.error(request, '❌ حساب کاربری شما غیرفعال است. لطفاً با پشتیبانی تماس بگیرید')
                 return render(request, 'accounts/customer_sms_login.html')
+            
+            print("✅ DEBUG: User is active, proceeding with SMS")
             
             # تولید کد تایید تصادفی
             verification_code = ''.join(random.choices(string.digits, k=6))
@@ -278,13 +338,19 @@ def customer_sms_login_view(request):
             return redirect('accounts:customer_sms_verify')
             
         except User.DoesNotExist:
+            print(f"❌ DEBUG: User.DoesNotExist for phone: {phone}")
+            print("❌ DEBUG: This is where the error message comes from!")
             messages.error(request, '❌ کاربری با این شماره تلفن یافت نشد. لطفاً با پشتیبانی تماس بگیرید')
             return render(request, 'accounts/customer_sms_login.html')
         
         except Exception as e:
+            print(f"❌ DEBUG: Exception occurred: {e}")
+            import traceback
+            traceback.print_exc()
             messages.error(request, '❌ خطا در ارسال کد تایید. لطفاً مجدداً تلاش کنید')
             return render(request, 'accounts/customer_sms_login.html')
     
+    print("🔍 DEBUG: Rendering SMS login form")
     return render(request, 'accounts/customer_sms_login.html')
 
 

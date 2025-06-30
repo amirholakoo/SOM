@@ -334,7 +334,11 @@
                         {{ current_working_hours.get_duration_hours|floatformat:1 }} ساعت
                     </p>
                     <p><strong>👑 تنظیم شده توسط:</strong> 
-                        {{ current_working_hours.set_by.get_full_name|default:current_working_hours.set_by.username }}
+                        {% if current_working_hours.set_by %}
+                            {{ current_working_hours.set_by.get_full_name|default:current_working_hours.set_by.username }}
+                        {% else %}
+                            سیستم
+                        {% endif %}
                     </p>
                 </div>
                 <div class="col-md-6">
@@ -387,7 +391,11 @@
                             </td>
                             <td>{{ hours.get_duration_hours|floatformat:1 }} ساعت</td>
                             <td>
-                                {{ hours.set_by.get_full_name|default:hours.set_by.username }}
+                                {% if hours.set_by %}
+                                    {{ hours.set_by.get_full_name|default:hours.set_by.username }}
+                                {% else %}
+                                    سیستم
+                                {% endif %}
                             </td>
                             <td>{{ hours.created_at|date:"Y/m/d H:i" }}</td>
                         </tr>
@@ -434,7 +442,7 @@
         alertContainer.innerHTML = '';
         
         // ارسال درخواست
-        fetch('/api/set-working-hours/', {
+        fetch('/core/api/set-working-hours/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

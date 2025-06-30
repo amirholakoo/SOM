@@ -17,7 +17,7 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-key')
 DEBUG = config('DEBUG', default=True, cast=bool)
 
 # 🌐 هاست‌های مجاز - آدرس‌هایی که مجاز به دسترسی به سرور هستند
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,testserver', cast=Csv())
 
 # 🏷️ نوع سرور (local, dev, production) - برای انتخاب تنظیمات مناسب
 SERVER_TYPE = config('TYPE', default='local')

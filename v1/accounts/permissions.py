@@ -17,6 +17,8 @@ def check_user_permission(permission_type):
     """
     🔍 دکوریتور کنترل دسترسی بر اساس متد‌های User model
     
+    👑 Super Admin همیشه دسترسی دارد
+    
     🔧 استفاده:
         @check_user_permission('is_admin')
         def admin_view(request):
@@ -27,6 +29,10 @@ def check_user_permission(permission_type):
         @wraps(view_func)
         @login_required
         def wrapped_view(request, *args, **kwargs):
+            # 👑 Super Admin همیشه دسترسی دارد
+            if request.user.is_super_admin():
+                return view_func(request, *args, **kwargs)
+            
             # بررسی متد مورد نظر در user
             if hasattr(request.user, permission_type):
                 check_method = getattr(request.user, permission_type)
@@ -123,6 +129,8 @@ def permission_required_custom(permission_codename):
     """
     🔐 دکوریتور کنترل دسترسی بر اساس مجوز خاص
     
+    👑 Super Admin همیشه دسترسی دارد
+    
     🔧 استفاده:
         @permission_required_custom('manage_customers')
         def customer_management(request):
@@ -133,6 +141,10 @@ def permission_required_custom(permission_codename):
         @wraps(view_func)
         @login_required
         def wrapped_view(request, *args, **kwargs):
+            # 👑 Super Admin همیشه دسترسی دارد
+            if request.user.is_super_admin():
+                return view_func(request, *args, **kwargs)
+            
             if not request.user.has_perm(f'accounts.{permission_codename}'):
                 return render(request, 'accounts/permission_denied.html', {
                     'required_permission': permission_codename,
@@ -162,6 +174,10 @@ class RoleRequiredMixin(LoginRequiredMixin):
         # 🔐 بررسی احراز هویت
         if not request.user.is_authenticated:
             return self.handle_no_permission()
+        
+        # 👑 Super Admin همیشه دسترسی دارد
+        if request.user.is_super_admin():
+            return super().dispatch(request, *args, **kwargs)
         
         # 🎭 بررسی نقش کاربر
         if self.allowed_roles and request.user.role not in self.allowed_roles:
@@ -218,6 +234,10 @@ class PermissionRequiredMixin(LoginRequiredMixin):
         """
         if not request.user.is_authenticated:
             return self.handle_no_permission()
+        
+        # 👑 Super Admin همیشه دسترسی دارد
+        if request.user.is_super_admin():
+            return super().dispatch(request, *args, **kwargs)
         
         if self.permission_required and not request.user.has_perm(self.permission_required):
             return render(request, 'accounts/permission_denied.html', {
@@ -288,4 +308,36 @@ def user_permissions_context(request):
             'is_admin': request.user.is_admin(),
             'is_finance': request.user.is_finance(),
         }
-    } 
+    }
+
+
+def super_admin_permission_required(permission_codename):
+    """
+    🔐 دکوریتور کنترل دسترسی که Super Admin را همیشه راه می‌دهد
+    
+    👑 Super Admin همیشه دسترسی دارد
+    
+    🔧 استفاده:
+        @super_admin_permission_required('accounts.manage_customers')
+        def customer_management(request):
+            # Super Admin یا کاربرانی که مجوز دارند
+            pass
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        @login_required
+        def wrapped_view(request, *args, **kwargs):
+            # 👑 Super Admin همیشه دسترسی دارد
+            if request.user.is_super_admin():
+                return view_func(request, *args, **kwargs)
+            
+            # بررسی مجوز برای سایر کاربران
+            if not request.user.has_perm(permission_codename):
+                return render(request, 'accounts/permission_denied.html', {
+                    'required_permission': permission_codename,
+                    'message': f'🚫 شما مجوز {permission_codename} ندارید'
+                }, status=403)
+            
+            return view_func(request, *args, **kwargs)
+        return wrapped_view
+    return decorator 

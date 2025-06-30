@@ -167,10 +167,6 @@ class Command(BaseCommand):
         statuses = [choice[0] for choice in Product.STATUS_CHOICES]
         status = random.choice(statuses)
         
-        # 💳 انتخاب تصادفی وضعیت پرداخت
-        payment_statuses = [choice[0] for choice in Product.PAYMENT_STATUS_CHOICES]
-        payment_status = random.choice(payment_statuses)
-        
         # 📏 مشخصات تصادفی
         width = random.randint(800, 1600)  # میلی‌متر
         gsm = random.choice([70, 80, 90, 100, 120, 140, 160])  # گرم بر متر مربع
@@ -182,30 +178,29 @@ class Command(BaseCommand):
         qr_code = f"QR-{reel_number}-{random.randint(1000, 9999)}"
         
         # 💰 محاسبه قیمت بر اساس ابعاد و کیفیت
-        area = float(width * length) / 1000.0  # متر مربع
-        weight = area * float(gsm) / 1000.0  # کیلوگرم
+        area = Decimal(width * length) / Decimal('1000.0')  # متر مربع
+        weight = area * Decimal(gsm) / Decimal('1000.0')  # کیلوگرم
         
         # قیمت پایه بر اساس کیفیت
         base_price_per_kg = {
-            'A+': 45000,
-            'A': 40000,
-            'B+': 38000,
-            'B': 35000,
-            'C': 30000,
-        }.get(grade, 35000)
+            'A+': Decimal('45000'),
+            'A': Decimal('40000'),
+            'B+': Decimal('38000'),
+            'B': Decimal('35000'),
+            'C': Decimal('30000'),
+        }.get(grade, Decimal('35000'))
         
         # قیمت کل با تغییرات تصادفی
-        total_price = weight * float(base_price_per_kg)
+        total_price = weight * base_price_per_kg
         # اضافه کردن تغییرات تصادفی ±15%
-        price_variation = random.uniform(0.85, 1.15)
-        final_price = Decimal(str(int(total_price * price_variation)))
+        price_variation = Decimal(str(random.uniform(0.85, 1.15)))
+        final_price = (total_price * price_variation).quantize(Decimal('1'))
         
         # 🏗️ ایجاد محصول
         product = Product.objects.create(
             reel_number=reel_number,
             location=location,
             status=status,
-            payment_status=payment_status,
             width=width,
             gsm=gsm,
             length=length,

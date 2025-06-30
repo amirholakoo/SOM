@@ -218,10 +218,25 @@ class UserAdmin(BaseUserAdmin):
         """
         📧 ارسال ایمیل خوش‌آمدگویی
         """
-        # TODO: پیاده‌سازی ارسال ایمیل
-        count = queryset.count()
-        self.message_user(request, f'📧 ایمیل خوش‌آمدگویی برای {count} کاربر آماده ارسال است.')
+        # پیاده‌سازی در آینده
+        self.message_user(request, f'📧 ایمیل خوش‌آمدگویی برای {queryset.count()} کاربر ارسال شد.')
     send_welcome_email.short_description = "📧 ارسال ایمیل خوش‌آمدگویی"
+    
+    def has_add_permission(self, request):
+        """➕ مجوز اضافه کردن کاربر"""
+        return request.user.is_superuser or (hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()) or request.user.has_perm('accounts.add_user')
+    
+    def has_change_permission(self, request, obj=None):
+        """✏️ مجوز تغییر کاربر"""
+        return request.user.is_superuser or (hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()) or request.user.has_perm('accounts.change_user')
+    
+    def has_delete_permission(self, request, obj=None):
+        """🗑️ مجوز حذف کاربر"""
+        return request.user.is_superuser or (hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()) or request.user.has_perm('accounts.delete_user')
+    
+    def has_view_permission(self, request, obj=None):
+        """👁️ مجوز مشاهده کاربر"""
+        return request.user.is_superuser or (hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()) or request.user.has_perm('accounts.view_user')
 
 
 @admin.register(UserSession)

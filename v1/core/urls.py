@@ -40,6 +40,7 @@ urlpatterns = [
     path('cart/', views.cart_view, name='cart'),
     path('add-to-cart/', views.add_to_cart_view, name='add_to_cart'),
     path('update-cart-quantity/', views.update_cart_quantity_view, name='update_cart_quantity'),
+    path('update-cart-payment-method/', views.update_cart_payment_method_view, name='update_cart_payment_method'),
     path('remove-from-cart/', views.remove_from_cart_view, name='remove_from_cart'),
     path('checkout/', views.checkout_view, name='checkout'),
     path('order/<int:order_id>/', views.order_detail_view, name='order_detail'),
