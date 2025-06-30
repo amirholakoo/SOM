@@ -1,7 +1,7 @@
 asgiref==3.8.1
 charset-normalizer==3.4.2
 crispy-bootstrap5==2025.6
-Django>=5.0.0,<6.0.0
+Django==5.2.1
 django-cors-headers==4.7.0
 django-crispy-forms==2.4
 django-debug-toolbar==5.2.0
