@@ -13,6 +13,7 @@
 - [🚀 Features](#-features)
 - [🛠️ Tech Stack](#️-tech-stack)
 - [📦 Installation](#-installation)
+- [🔧 Django Management Commands](#-django-management-commands)
 - [🔐 Authentication System](#-authentication-system)
 - [📊 Project Structure](#-project-structure)
 - [✅ Completed Features](#-completed-features)
@@ -132,6 +133,245 @@ cp .env.example .env
 # Edit environment variables
 nano .env
 ```
+
+## 🔧 Django Management Commands
+
+> **📝 For Next Developer**: This section contains all custom Django management commands created for testing, development, and system setup. These commands are essential for development workflow and testing.
+
+### 📊 Command Overview
+
+| Command | App | Purpose | Usage |
+|---------|-----|---------|-------|
+| `create_full_test_data` | accounts | Create test users for all roles | `python manage.py create_full_test_data` |
+| `setup_roles` | accounts | Setup roles and permissions | `python manage.py setup_roles` |
+| `create_test_products` | core | Create test products | `python manage.py create_test_products` |
+| `create_daily_test_customer` | accounts | Create daily test customers | `python manage.py create_daily_test_customer` |
+| `create_test_users` | accounts | Create test users | `python manage.py create_test_users` |
+| `create_fake_test_data` | accounts | Create fake test data | `python manage.py create_fake_test_data` |
+| `create_test_customer` | accounts | Create single test customer | `python manage.py create_test_customer` |
+| `create_specific_user_activities` | accounts | Create user activities | `python manage.py create_specific_user_activities` |
+
+### 🚀 Essential Commands for Development
+
+#### 1. **Complete System Setup**
+```bash
+# Setup roles and create super admin
+python manage.py setup_roles --create-superuser --username admin --password admin123
+
+# Create full test data for all roles
+python manage.py create_full_test_data
+
+# Create test products
+python manage.py create_test_products --count 20
+```
+
+#### 2. **Test User Creation**
+```bash
+# Create test users for all roles (recommended)
+python manage.py create_full_test_data
+
+# Output will show:
+# ============================================================
+# 📋 اطلاعات ورود تستی برای همه نقش‌ها:
+# ------------------------------------------------------------
+# نقش            نام کاربری     موبایل         رمز عبور    
+# ------------------------------------------------------------
+# 🔴 Super Admin  superadmin1    09120000001    123456      
+# 🟡 Admin        admin1         09120000002    123456      
+# 🟢 Finance      finance1       09120000003    123456      
+# 🔵 Customer     customer1      09120000004    123456      
+# 🔵 Customer     customer2      09120000005    123456      
+# ============================================================
+```
+
+#### 3. **SMS Testing**
+```bash
+# Create daily test customers for SMS testing
+python manage.py create_daily_test_customer --count 5 --prefix 0915
+
+# Use these phone numbers for SMS verification testing
+# Codes will appear in terminal/logs
+```
+
+### 📁 Command Locations
+
+```
+v1/
+├── accounts/management/commands/
+│   ├── create_full_test_data.py          # ⭐ Main test data command
+│   ├── setup_roles.py                    # Role and permission setup
+│   ├── create_test_users.py              # Test user creation
+│   ├── create_fake_test_data.py          # Fake data generation
+│   ├── create_daily_test_customer.py     # Daily customer creation
+│   ├── create_test_customer.py           # Single customer creation
+│   └── create_specific_user_activities.py # User activity creation
+└── core/management/commands/
+    └── create_test_products.py           # Product test data
+```
+
+### 🎯 Command Details
+
+#### **`create_full_test_data`** ⭐ **Most Important**
+- **Purpose**: Creates test users for all 4 roles (Super Admin, Admin, Finance, Customer)
+- **Features**: 
+  - All users are set to `ACTIVE` status
+  - Unique usernames, phones, and emails
+  - Password: `123456` for all users
+  - Prints beautiful table with login credentials
+- **Usage**: `python manage.py create_full_test_data`
+- **Output**: Complete login table in terminal
+
+#### **`setup_roles`**
+- **Purpose**: Initializes user groups, permissions, and optionally creates Super Admin
+- **Features**:
+  - Creates user groups for all roles
+  - Assigns permissions to groups
+  - Can create Super Admin with custom credentials
+- **Usage**: 
+  ```bash
+  python manage.py setup_roles
+  python manage.py setup_roles --create-superuser --username admin --password admin123
+  ```
+
+#### **`create_test_products`**
+- **Purpose**: Creates test products for inventory testing
+- **Features**:
+  - Generates realistic product data
+  - Creates activity logs for each product
+  - Calculates prices based on dimensions and quality
+  - Supports bulk creation with `--count` parameter
+- **Usage**: 
+  ```bash
+  python manage.py create_test_products
+  python manage.py create_test_products --count 50
+  python manage.py create_test_products --clear  # Clear existing products first
+  ```
+
+#### **`create_daily_test_customer`**
+- **Purpose**: Creates test customers for SMS verification testing
+- **Features**:
+  - Generates unique phone numbers
+  - Creates customers with `ACTIVE` status
+  - Perfect for SMS testing workflow
+- **Usage**:
+  ```bash
+  python manage.py create_daily_test_customer
+  python manage.py create_daily_test_customer --count 10 --prefix 0915
+  ```
+
+### 🔧 Development Workflow
+
+#### **For New Developer Setup**
+```bash
+# 1. Clone and setup project
+git clone https://github.com/amirholakoo/IOMS.git
+cd IOMS/v1
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# 2. Setup database
+python manage.py migrate
+
+# 3. Create test data
+python manage.py create_full_test_data
+python manage.py create_test_products --count 10
+
+# 4. Start development
+python manage.py runserver
+```
+
+#### **For Testing Different Roles**
+```bash
+# Use the credentials from create_full_test_data output
+# Login URLs:
+# - Staff: http://127.0.0.1:8000/accounts/staff/login/?role=super_admin
+# - Customer: http://127.0.0.1:8000/accounts/customer/sms-login/
+```
+
+#### **For SMS Testing**
+```bash
+# 1. Create test customers
+python manage.py create_daily_test_customer --count 3
+
+# 2. Use phone numbers in customer SMS login
+# 3. Check terminal for SMS codes (fake SMS implementation)
+```
+
+### 🛠️ Customizing Commands
+
+#### **Adding New Test Data**
+```python
+# Example: Adding new user to create_full_test_data.py
+{
+    'username': 'newuser',
+    'password': '123456',
+    'first_name': 'نام',
+    'last_name': 'نام خانوادگی',
+    'role': User.UserRole.ADMIN,
+    'phone': '09120000006',
+    'email': 'newuser@homayoms.com',
+    'is_staff': True,
+    'is_superuser': False,
+}
+```
+
+#### **Creating New Commands**
+```bash
+# Create new command
+python manage.py startapp myapp
+mkdir myapp/management
+mkdir myapp/management/commands
+touch myapp/management/__init__.py
+touch myapp/management/commands/__init__.py
+```
+
+### 📝 Best Practices
+
+1. **Always use `create_full_test_data`** for initial setup
+2. **Test SMS with `create_daily_test_customer`** 
+3. **Use `--clear` flag** when you want fresh data
+4. **Check command output** for login credentials
+5. **Use `--count` parameter** for bulk data creation
+6. **Run commands in virtual environment**
+
+### 🚨 Troubleshooting
+
+#### **Command Not Found**
+```bash
+# Ensure you're in the correct directory
+cd v1/
+
+# Check if command exists
+python manage.py help | grep create
+```
+
+#### **Permission Errors**
+```bash
+# Make sure virtual environment is activated
+source venv/bin/activate
+
+# Check Django installation
+python manage.py check
+```
+
+#### **Database Errors**
+```bash
+# Run migrations first
+python manage.py migrate
+
+# Check database connection
+python manage.py dbshell
+```
+
+### 📚 Additional Resources
+
+- **Django Management Commands**: [Django Documentation](https://docs.djangoproject.com/en/stable/howto/custom-management-commands/)
+- **Command Structure**: All commands follow Django's BaseCommand pattern
+- **Output Formatting**: Commands use Django's styling for beautiful terminal output
+- **Error Handling**: All commands include proper error handling and user feedback
+
+---
 
 ## 🔐 Authentication System
 

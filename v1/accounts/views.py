@@ -168,12 +168,19 @@ def user_list_view(request):
     # مرتب‌سازی
     users = users.order_by('-created_at')
     
+    # شمارش مشتریان در انتظار تایید
+    pending_customers_count = User.objects.filter(
+        role=User.UserRole.CUSTOMER,
+        status=User.UserStatus.PENDING
+    ).count()
+    
     # صفحه‌بندی
     paginator = Paginator(users, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
     context = {
+        'users': page_obj,  # تغییر از page_obj به users برای سازگاری با template
         'page_obj': page_obj,
         'user_roles': User.UserRole.choices,
         'user_statuses': User.UserStatus.choices,
@@ -181,6 +188,7 @@ def user_list_view(request):
         'role_filter': role_filter,
         'status_filter': status_filter,
         'total_users': users.count(),
+        'pending_customers_count': pending_customers_count,
     }
     return render(request, 'accounts/user_list.html', context)
 
@@ -278,7 +286,10 @@ def customer_sms_login_view(request):
             # بررسی فعال بودن کاربر
             if not user.is_active_user():
                 print("❌ DEBUG: User is not active")
-                messages.error(request, '❌ حساب کاربری شما غیرفعال است. لطفاً با پشتیبانی تماس بگیرید')
+                if user.status == User.UserStatus.PENDING:
+                    messages.error(request, '⏳ حساب کاربری شما در انتظار تایید است. لطفاً با پشتیبانی تماس بگیرید')
+                else:
+                    messages.error(request, '❌ حساب کاربری شما غیرفعال است. لطفاً با پشتیبانی تماس بگیرید')
                 return render(request, 'accounts/customer_sms_login.html')
             
             print("✅ DEBUG: User is active, proceeding with SMS")
@@ -317,7 +328,21 @@ def customer_sms_login_view(request):
         except User.DoesNotExist:
             print(f"❌ DEBUG: User.DoesNotExist for phone: {phone}")
             print("❌ DEBUG: This is where the error message comes from!")
-            messages.error(request, '❌ کاربری با این شماره تلفن یافت نشد. لطفاً با پشتیبانی تماس بگیرید')
+            
+            # بررسی اینکه آیا کاربر با این شماره وجود دارد اما نقش Customer نیست
+            existing_user = User.objects.filter(phone=phone).first()
+            if existing_user:
+                messages.error(request, '❌ این شماره تلفن برای کاربر دیگری ثبت شده است. لطفاً با پشتیبانی تماس بگیرید')
+            else:
+                # کاربر جدید - نمایش پیام مناسب با لینک ثبت‌نام
+                messages.error(request, '❌ شما عضو نیستید. لطفاً ابتدا ثبت‌نام کنید یا با پشتیبانی تماس بگیرید')
+                # ذخیره شماره تلفن در session برای استفاده در صفحه ثبت‌نام
+                request.session['registration_phone'] = phone
+                return render(request, 'accounts/customer_sms_login.html', {
+                    'show_signup_link': True,
+                    'phone': phone
+                })
+            
             return render(request, 'accounts/customer_sms_login.html')
         
         except Exception as e:
@@ -329,6 +354,245 @@ def customer_sms_login_view(request):
     
     print("🔍 DEBUG: Rendering SMS login form")
     return render(request, 'accounts/customer_sms_login.html')
+
+
+def customer_registration_view(request):
+    """
+    📝 ثبت‌نام مشتری جدید
+    🔐 ایجاد حساب کاربری جدید با وضعیت PENDING
+    """
+    if request.method == 'POST':
+        # دریافت اطلاعات فرم
+        phone = request.POST.get('phone', '').strip()
+        first_name = request.POST.get('first_name', '').strip()
+        last_name = request.POST.get('last_name', '').strip()
+        email = request.POST.get('email', '').strip()
+        address = request.POST.get('address', '').strip()
+        economic_code = request.POST.get('economic_code', '').strip()
+        national_id = request.POST.get('national_id', '').strip()
+        postcode = request.POST.get('postcode', '').strip()
+        
+        # اعتبارسنجی فیلدهای اجباری
+        errors = []
+        if not phone:
+            errors.append('📱 شماره تلفن الزامی است')
+        elif not phone.startswith('09') or len(phone) != 11:
+            errors.append('📱 شماره تلفن باید با 09 شروع شده و 11 رقم باشد')
+        
+        if not first_name:
+            errors.append('👤 نام الزامی است')
+        
+        if not last_name:
+            errors.append('👤 نام خانوادگی الزامی است')
+        
+        # بررسی تکراری نبودن شماره تلفن
+        if User.objects.filter(phone=phone).exists():
+            errors.append('📱 این شماره تلفن قبلاً ثبت شده است')
+        
+        # بررسی تکراری نبودن ایمیل (در صورت وارد کردن)
+        if email and User.objects.filter(email=email).exists():
+            errors.append('📧 این ایمیل قبلاً ثبت شده است')
+        
+        if errors:
+            for error in errors:
+                messages.error(request, error)
+            return render(request, 'accounts/customer_registration.html', {
+                'form_data': request.POST
+            })
+        
+        try:
+            # تولید نام کاربری منحصر به فرد
+            base_username = f"{first_name}_{last_name}".lower().replace(' ', '_')
+            username = base_username
+            counter = 1
+            while User.objects.filter(username=username).exists():
+                username = f"{base_username}_{counter}"
+                counter += 1
+            
+            # ایجاد کاربر جدید با وضعیت PENDING
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=None,  # کاربران Customer رمز عبور ندارند
+                first_name=first_name,
+                last_name=last_name,
+                phone=phone,
+                role=User.UserRole.CUSTOMER,
+                status=User.UserStatus.PENDING,  # وضعیت در انتظار تایید
+                is_active=False,  # غیرفعال تا تایید شود
+                date_joined=timezone.now()
+            )
+            
+            # ایجاد Customer object
+            customer = Customer.objects.create(
+                customer_name=f"{first_name} {last_name}",
+                phone=phone,
+                address=address,
+                economic_code=economic_code,
+                national_id=national_id,
+                postcode=postcode,
+                status='Inactive',  # غیرفعال تا تایید شود
+                comments=f'🔵 ثبت‌نام جدید - در انتظار تایید Super Admin\n📅 تاریخ ثبت‌نام: {timezone.now().strftime("%Y/%m/%d %H:%M")}'
+            )
+            
+            # ثبت لاگ ثبت‌نام جدید
+            ActivityLog.log_activity(
+                user=None,  # کاربر هنوز تایید نشده
+                action='CREATE',
+                description=f'📝 درخواست ثبت‌نام جدید مشتری: {first_name} {last_name} - {phone}',
+                content_object=user,
+                severity='MEDIUM',
+                ip_address=get_client_ip(request),
+                user_agent=request.META.get('HTTP_USER_AGENT'),
+                registration_data={
+                    'phone': phone,
+                    'first_name': first_name,
+                    'last_name': last_name,
+                    'email': email,
+                    'address': address,
+                    'economic_code': economic_code,
+                    'national_id': national_id,
+                    'postcode': postcode
+                }
+            )
+            
+            # پاک کردن شماره تلفن از session
+            if 'registration_phone' in request.session:
+                del request.session['registration_phone']
+            
+            messages.success(request, 
+                '✅ درخواست ثبت‌نام شما با موفقیت ارسال شد!\n'
+                '⏳ پس از تایید توسط مدیریت، می‌توانید وارد شوید.\n'
+                '📞 برای پیگیری با پشتیبانی تماس بگیرید.'
+            )
+            
+            return redirect('accounts:customer_sms_login')
+            
+        except Exception as e:
+            print(f"❌ Error in customer registration: {e}")
+            import traceback
+            traceback.print_exc()
+            messages.error(request, '❌ خطا در ثبت‌نام. لطفاً مجدداً تلاش کنید')
+            return render(request, 'accounts/customer_registration.html', {
+                'form_data': request.POST
+            })
+    
+    # GET request - نمایش فرم ثبت‌نام
+    phone = request.session.get('registration_phone', '')
+    return render(request, 'accounts/customer_registration.html', {
+        'phone': phone,
+        'form_data': {},
+    })
+
+
+def verify_customer_view(request, user_id):
+    """
+    ✅ تایید مشتری توسط Super Admin
+    🔐 تغییر وضعیت کاربر از PENDING به ACTIVE
+    """
+    if not request.user.is_authenticated or not request.user.is_super_admin():
+        messages.error(request, '❌ شما دسترسی به این بخش را ندارید')
+        return redirect('accounts:dashboard')
+    
+    try:
+        user = User.objects.get(id=user_id, role=User.UserRole.CUSTOMER)
+        
+        if user.status != User.UserStatus.PENDING:
+            messages.error(request, '❌ این کاربر قبلاً تایید شده است')
+            return redirect('accounts:user_list')
+        
+        # تغییر وضعیت کاربر
+        user.status = User.UserStatus.ACTIVE
+        user.is_active = True
+        user.save()
+        
+        # تغییر وضعیت Customer object
+        customer = Customer.objects.filter(
+            customer_name=f"{user.first_name} {user.last_name}",
+            phone=user.phone
+        ).first()
+        
+        if customer:
+            customer.status = 'Active'
+            customer.save()
+        
+        # ارسال SMS تایید (fake)
+        fake_send_sms(user.phone, f"✅ حساب کاربری شما تایید شد. می‌توانید وارد شوید.")
+        
+        # ثبت لاگ تایید
+        ActivityLog.log_activity(
+            user=request.user,
+            action='APPROVE',
+            description=f'✅ مشتری تایید شد: {user.get_full_name()} - {user.phone}',
+            content_object=user,
+            severity='HIGH',
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT'),
+            approved_by=request.user.username,
+            customer_phone=user.phone
+        )
+        
+        messages.success(request, f'✅ مشتری {user.get_full_name()} با موفقیت تایید شد')
+        
+    except User.DoesNotExist:
+        messages.error(request, '❌ کاربر مورد نظر یافت نشد')
+    except Exception as e:
+        print(f"❌ Error in customer verification: {e}")
+        messages.error(request, '❌ خطا در تایید مشتری')
+    
+    return redirect('accounts:user_list')
+
+
+def reject_customer_view(request, user_id):
+    """
+    ❌ رد درخواست مشتری توسط Super Admin
+    🗑️ حذف کاربر و Customer object
+    """
+    if not request.user.is_authenticated or not request.user.is_super_admin():
+        messages.error(request, '❌ شما دسترسی به این بخش را ندارید')
+        return redirect('accounts:dashboard')
+    
+    try:
+        user = User.objects.get(id=user_id, role=User.UserRole.CUSTOMER)
+        
+        if user.status != User.UserStatus.PENDING:
+            messages.error(request, '❌ این کاربر قبلاً تایید شده است')
+            return redirect('accounts:user_list')
+        
+        # حذف Customer object مرتبط
+        customer = Customer.objects.filter(
+            customer_name=f"{user.first_name} {user.last_name}",
+            phone=user.phone
+        ).first()
+        
+        if customer:
+            customer.delete()
+        
+        # ثبت لاگ رد درخواست
+        ActivityLog.log_activity(
+            user=request.user,
+            action='REJECT',
+            description=f'❌ درخواست مشتری رد شد: {user.get_full_name()} - {user.phone}',
+            content_object=user,
+            severity='HIGH',
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT'),
+            rejected_by=request.user.username,
+            customer_phone=user.phone
+        )
+        
+        # حذف کاربر
+        user.delete()
+        
+        messages.success(request, f'❌ درخواست مشتری {user.get_full_name()} رد شد')
+        
+    except User.DoesNotExist:
+        messages.error(request, '❌ کاربر مورد نظر یافت نشد')
+    except Exception as e:
+        print(f"❌ Error in customer rejection: {e}")
+        messages.error(request, '❌ خطا در رد درخواست مشتری')
+    
+    return redirect('accounts:user_list')
 
 
 def customer_sms_verify_view(request):
@@ -505,3 +769,153 @@ def get_client_ip(request):
     else:
         ip = request.META.get('REMOTE_ADDR')
     return ip
+
+
+@login_required
+@super_admin_permission_required('accounts.manage_all_users')
+@require_http_methods(["POST"])
+def delete_user_view(request, user_id):
+    """🗑️ حذف کاربر (فقط Super Admin)"""
+    user_to_delete = get_object_or_404(User, id=user_id)
+    
+    # جلوگیری از حذف خود Super Admin
+    if user_to_delete == request.user:
+        messages.error(request, '❌ نمی‌توانید حساب کاربری خود را حذف کنید')
+        return redirect('accounts:user_list')
+    
+    # جلوگیری از حذف آخرین Super Admin
+    if user_to_delete.role == User.UserRole.SUPER_ADMIN:
+        super_admin_count = User.objects.filter(role=User.UserRole.SUPER_ADMIN).count()
+        if super_admin_count <= 1:
+            messages.error(request, '❌ نمی‌توانید آخرین Super Admin را حذف کنید')
+            return redirect('accounts:user_list')
+    
+    try:
+        # حذف Customer مرتبط اگر وجود دارد
+        if user_to_delete.role == User.UserRole.CUSTOMER:
+            customer = Customer.objects.filter(
+                customer_name=user_to_delete.get_full_name() or user_to_delete.username
+            ).first()
+            if customer:
+                customer.delete()
+        
+        # حذف کاربر
+        username = user_to_delete.username
+        user_to_delete.delete()
+        
+        messages.success(request, f'✅ کاربر {username} با موفقیت حذف شد')
+        
+    except Exception as e:
+        messages.error(request, f'❌ خطا در حذف کاربر: {str(e)}')
+    
+    return redirect('accounts:user_list')
+
+
+@login_required
+@super_admin_permission_required('accounts.manage_all_users')
+def edit_user_view(request, user_id):
+    """📝 ویرایش کاربر (فقط Super Admin)"""
+    user_to_edit = get_object_or_404(User, id=user_id)
+    
+    if request.method == 'POST':
+        try:
+            # دریافت داده‌های فرم
+            first_name = request.POST.get('first_name', '').strip()
+            last_name = request.POST.get('last_name', '').strip()
+            email = request.POST.get('email', '').strip()
+            phone = request.POST.get('phone', '').strip()
+            role = request.POST.get('role', '').strip()
+            status = request.POST.get('status', '').strip()
+            department = request.POST.get('department', '').strip()
+            notes = request.POST.get('notes', '').strip()
+            
+            # اعتبارسنجی داده‌ها
+            if not first_name:
+                messages.error(request, '❌ نام الزامی است')
+                return render(request, 'accounts/edit_user.html', {
+                    'user_to_edit': user_to_edit,
+                    'user_roles': User.UserRole.choices,
+                    'user_statuses': User.UserStatus.choices,
+                })
+            
+            if not phone:
+                messages.error(request, '❌ شماره تلفن الزامی است')
+                return render(request, 'accounts/edit_user.html', {
+                    'user_to_edit': user_to_edit,
+                    'user_roles': User.UserRole.choices,
+                    'user_statuses': User.UserStatus.choices,
+                })
+            
+            # بررسی یکتا بودن شماره تلفن
+            if phone != user_to_edit.phone:
+                if User.objects.filter(phone=phone).exists():
+                    messages.error(request, '❌ این شماره تلفن قبلاً ثبت شده است')
+                    return render(request, 'accounts/edit_user.html', {
+                        'user_to_edit': user_to_edit,
+                        'user_roles': User.UserRole.choices,
+                        'user_statuses': User.UserStatus.choices,
+                    })
+            
+            # بررسی یکتا بودن ایمیل
+            if email and email != user_to_edit.email:
+                if User.objects.filter(email=email).exists():
+                    messages.error(request, '❌ این ایمیل قبلاً ثبت شده است')
+                    return render(request, 'accounts/edit_user.html', {
+                        'user_to_edit': user_to_edit,
+                        'user_roles': User.UserRole.choices,
+                        'user_statuses': User.UserStatus.choices,
+                    })
+            
+            # اعتبارسنجی نقش
+            if role not in [choice[0] for choice in User.UserRole.choices]:
+                messages.error(request, '❌ نقش انتخاب شده نامعتبر است')
+                return render(request, 'accounts/edit_user.html', {
+                    'user_to_edit': user_to_edit,
+                    'user_roles': User.UserRole.choices,
+                    'user_statuses': User.UserStatus.choices,
+                })
+            
+            # اعتبارسنجی وضعیت
+            if status not in [choice[0] for choice in User.UserStatus.choices]:
+                messages.error(request, '❌ وضعیت انتخاب شده نامعتبر است')
+                return render(request, 'accounts/edit_user.html', {
+                    'user_to_edit': user_to_edit,
+                    'user_roles': User.UserRole.choices,
+                    'user_statuses': User.UserStatus.choices,
+                })
+            
+            # جلوگیری از تغییر نقش آخرین Super Admin
+            if user_to_edit.role == User.UserRole.SUPER_ADMIN and role != User.UserRole.SUPER_ADMIN:
+                super_admin_count = User.objects.filter(role=User.UserRole.SUPER_ADMIN).count()
+                if super_admin_count <= 1:
+                    messages.error(request, '❌ نمی‌توانید نقش آخرین Super Admin را تغییر دهید')
+                    return render(request, 'accounts/edit_user.html', {
+                        'user_to_edit': user_to_edit,
+                        'user_roles': User.UserRole.choices,
+                        'user_statuses': User.UserStatus.choices,
+                    })
+            
+            # بروزرسانی اطلاعات کاربر
+            user_to_edit.first_name = first_name
+            user_to_edit.last_name = last_name
+            user_to_edit.email = email
+            user_to_edit.phone = phone
+            user_to_edit.role = role
+            user_to_edit.status = status
+            user_to_edit.department = department
+            user_to_edit.notes = notes
+            
+            user_to_edit.save()
+            
+            messages.success(request, f'✅ اطلاعات کاربر {user_to_edit.username} با موفقیت بروزرسانی شد')
+            return redirect('accounts:user_list')
+            
+        except Exception as e:
+            messages.error(request, f'❌ خطا در بروزرسانی اطلاعات: {str(e)}')
+    
+    context = {
+        'user_to_edit': user_to_edit,
+        'user_roles': User.UserRole.choices,
+        'user_statuses': User.UserStatus.choices,
+    }
+    return render(request, 'accounts/edit_user.html', context)

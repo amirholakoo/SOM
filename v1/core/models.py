@@ -5,14 +5,12 @@
 """
 
 from django.db import models
-from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
 from HomayOMS.baseModel import BaseModel
+from core.middleware import get_current_user
 import json
 from decimal import Decimal
-
-User = get_user_model()
 
 
 class Customer(BaseModel):
@@ -117,6 +115,15 @@ class Customer(BaseModel):
             models.Index(fields=['national_id']),     # 🆔 جستجوی سریع بر اساس شناسه ملی
             models.Index(fields=['status']),          # 📊 فیلتر بر اساس وضعیت
         ]
+        
+        # 🚫 جلوگیری از تکرار نام مشتری
+        constraints = [
+            models.UniqueConstraint(
+                fields=['customer_name'],
+                name='unique_customer_name',
+                violation_error_message='👤 مشتری با این نام قبلاً ثبت شده است'
+            ),
+        ]
     
     def clean(self):
         """
@@ -175,6 +182,121 @@ class Customer(BaseModel):
             contact_parts.append(f"🏠 {self.address}")
         
         return " | ".join(contact_parts) if contact_parts else "❌ اطلاعات تماس ناقص"
+
+    def save(self, *args, **kwargs):
+        """
+        💾 ذخیره مشتری با لاگ کردن عملیات
+        """
+        from core.models import ActivityLog
+        
+        # بررسی اینکه آیا مشتری جدید است یا موجود
+        is_new_customer = self.pk is None
+        
+        # ذخیره مقادیر قدیمی برای مقایسه
+        if not is_new_customer:
+            try:
+                old_customer = Customer.objects.get(pk=self.pk)
+                old_status = old_customer.status
+                old_name = old_customer.customer_name
+                old_phone = old_customer.phone
+            except Customer.DoesNotExist:
+                old_status = None
+                old_name = None
+                old_phone = None
+        else:
+            old_status = None
+            old_name = None
+            old_phone = None
+        
+        # ذخیره مشتری
+        super().save(*args, **kwargs)
+        
+        # دریافت کاربر فعلی
+        current_user = get_current_user()
+        
+        # لاگ کردن عملیات فقط اگر کاربر معتبر باشد
+        if current_user and current_user.is_authenticated:
+            if is_new_customer:
+                # مشتری جدید ایجاد شد
+                ActivityLog.log_activity(
+                    user=current_user,
+                    action='CREATE',
+                    description=f'👤 مشتری جدید ایجاد شد: {self.customer_name} - {self.phone}',
+                    content_object=self,
+                    severity='MEDIUM',
+                    extra_data={
+                        'customer_id': self.id,
+                        'customer_name': self.customer_name,
+                        'phone': self.phone,
+                        'status': self.status,
+                        'address': self.address,
+                        'economic_code': self.economic_code,
+                        'national_id': self.national_id
+                    }
+                )
+            else:
+                # مشتری ویرایش شد - بررسی تغییرات مهم
+                changes = []
+                
+                if old_status != self.status:
+                    changes.append(f'📊 وضعیت: {old_status} → {self.status}')
+                
+                if old_name != self.customer_name:
+                    changes.append(f'👤 نام: {old_name} → {self.customer_name}')
+                
+                if old_phone != self.phone:
+                    changes.append(f'📞 تلفن: {old_phone} → {self.phone}')
+                
+                # اگر تغییرات مهمی وجود دارد، لاگ کن
+                if changes:
+                    ActivityLog.log_activity(
+                        user=current_user,
+                        action='UPDATE',
+                        description=f'📝 مشتری ویرایش شد: {self.customer_name} - تغییرات: {", ".join(changes)}',
+                        content_object=self,
+                        severity='MEDIUM',
+                        extra_data={
+                            'customer_id': self.id,
+                            'customer_name': self.customer_name,
+                            'changes': changes,
+                            'old_status': old_status,
+                            'new_status': self.status,
+                            'old_name': old_name,
+                            'new_name': self.customer_name,
+                            'old_phone': old_phone,
+                            'new_phone': self.phone
+                        }
+                    )
+
+    def delete(self, *args, **kwargs):
+        """
+        🗑️ حذف مشتری با لاگ کردن عملیات
+        """
+        from core.models import ActivityLog
+        
+        # دریافت کاربر فعلی
+        current_user = get_current_user()
+        
+        # لاگ کردن حذف مشتری فقط اگر کاربر معتبر باشد
+        if current_user and current_user.is_authenticated:
+            ActivityLog.log_activity(
+                user=current_user,
+                action='DELETE',
+                description=f'🗑️ مشتری حذف شد: {self.customer_name} - {self.phone}',
+                content_object=self,
+                severity='HIGH',
+                extra_data={
+                    'customer_id': self.id,
+                    'customer_name': self.customer_name,
+                    'phone': self.phone,
+                    'status': self.status,
+                    'address': self.address,
+                    'economic_code': self.economic_code,
+                    'national_id': self.national_id
+                }
+            )
+        
+        super().delete(*args, **kwargs)
 
 
 class Product(BaseModel):
@@ -301,7 +423,7 @@ class Product(BaseModel):
     
     # 👤 کاربری که آخرین بار قیمت را تغییر داده
     price_updated_by = models.ForeignKey(
-        User,
+        "accounts.User",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -436,6 +558,123 @@ class Product(BaseModel):
             return self.price / total_weight
         return 0
 
+    def save(self, *args, **kwargs):
+        """
+        💾 ذخیره محصول با لاگ کردن تغییرات
+        """
+        from core.models import ActivityLog
+        
+        # بررسی اینکه آیا این یک محصول جدید است یا ویرایش
+        is_new_product = not self.pk
+        
+        # اگر محصول جدید نیست، اطلاعات قبلی را ذخیره کن
+        if not is_new_product:
+            try:
+                old_product = Product.objects.get(pk=self.pk)
+                old_price = old_product.price
+                old_status = old_product.status
+                old_location = old_product.location
+            except Product.DoesNotExist:
+                old_price = None
+                old_status = None
+                old_location = None
+        else:
+            old_price = None
+            old_status = None
+            old_location = None
+        
+        # ذخیره محصول
+        super().save(*args, **kwargs)
+        
+        # دریافت کاربر فعلی
+        current_user = get_current_user()
+        
+        # لاگ کردن عملیات فقط اگر کاربر معتبر باشد
+        if current_user and current_user.is_authenticated:
+            if is_new_product:
+                # محصول جدید ایجاد شد
+                ActivityLog.log_activity(
+                    user=current_user,
+                    action='CREATE',
+                    description=f'📦 محصول جدید ایجاد شد: {self.reel_number} - {self.get_product_info()}',
+                    content_object=self,
+                    severity='MEDIUM',
+                    extra_data={
+                        'product_id': self.id,
+                        'reel_number': self.reel_number,
+                        'location': self.location,
+                        'status': self.status,
+                        'price': str(self.price),
+                        'dimensions': f'{self.width}mm × {self.length}m',
+                        'gsm': self.gsm,
+                        'grade': self.grade
+                    }
+                )
+            else:
+                # محصول ویرایش شد - بررسی تغییرات مهم
+                changes = []
+                
+                if old_price != self.price:
+                    changes.append(f'💰 قیمت: {old_price} → {self.price} تومان')
+                
+                if old_status != self.status:
+                    changes.append(f'📊 وضعیت: {old_status} → {self.status}')
+                
+                if old_location != self.location:
+                    changes.append(f'📍 مکان: {old_location} → {self.location}')
+                
+                # اگر تغییرات مهمی وجود دارد، لاگ کن
+                if changes:
+                    ActivityLog.log_activity(
+                        user=current_user,
+                        action='UPDATE',
+                        description=f'📝 محصول ویرایش شد: {self.reel_number} - تغییرات: {", ".join(changes)}',
+                        content_object=self,
+                        severity='MEDIUM',
+                        extra_data={
+                            'product_id': self.id,
+                            'reel_number': self.reel_number,
+                            'changes': changes,
+                            'old_price': str(old_price) if old_price else None,
+                            'new_price': str(self.price),
+                            'old_status': old_status,
+                            'new_status': self.status,
+                            'old_location': old_location,
+                            'new_location': self.location
+                        }
+                    )
+
+    def delete(self, *args, **kwargs):
+        """
+        🗑️ حذف محصول با لاگ کردن عملیات
+        """
+        from core.models import ActivityLog
+        
+        # دریافت کاربر فعلی
+        current_user = get_current_user()
+        
+        # لاگ کردن حذف محصول فقط اگر کاربر معتبر باشد
+        if current_user and current_user.is_authenticated:
+            ActivityLog.log_activity(
+                user=current_user,
+                action='DELETE',
+                description=f'🗑️ محصول حذف شد: {self.reel_number} - {self.get_product_info()}',
+                content_object=self,
+                severity='HIGH',
+                extra_data={
+                    'product_id': self.id,
+                    'reel_number': self.reel_number,
+                    'location': self.location,
+                    'status': self.status,
+                    'price': str(self.price),
+                    'dimensions': f'{self.width}mm × {self.length}m',
+                    'gsm': self.gsm,
+                    'grade': self.grade
+                }
+            )
+        
+        super().delete(*args, **kwargs)
+
 
 class ActivityLog(BaseModel):
     """
@@ -480,7 +719,7 @@ class ActivityLog(BaseModel):
     
     # 👤 کاربر انجام‌دهنده عملیات
     user = models.ForeignKey(
-        User,
+        "accounts.User",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -794,7 +1033,7 @@ class Order(BaseModel):
     
     # 👤 کاربر ایجادکننده سفارش
     created_by = models.ForeignKey(
-        User,
+        "accounts.User",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -819,15 +1058,109 @@ class Order(BaseModel):
     
     def save(self, *args, **kwargs):
         """
-        💾 ذخیره سفارش با تولید خودکار شماره سفارش
+        💾 ذخیره سفارش با تولید خودکار شماره سفارش و لاگ کردن تغییرات
         """
+        from core.models import ActivityLog
+        
+        # بررسی اینکه آیا این یک سفارش جدید است یا ویرایش
+        is_new_order = not self.pk
+        
+        # اگر سفارش جدید نیست، اطلاعات قبلی را ذخیره کن
+        if not is_new_order:
+            try:
+                old_order = Order.objects.get(pk=self.pk)
+                old_status = old_order.status
+                old_total_amount = old_order.total_amount
+                old_final_amount = old_order.final_amount
+                old_discount_percentage = old_order.discount_percentage
+            except Order.DoesNotExist:
+                old_status = None
+                old_total_amount = None
+                old_final_amount = None
+                old_discount_percentage = None
+        else:
+            old_status = None
+            old_total_amount = None
+            old_final_amount = None
+            old_discount_percentage = None
+        
         if not self.order_number:
             self.order_number = self.generate_order_number()
+        
+        # اگر مبلغ کل تنظیم نشده، محاسبه کن
+        if self.total_amount == 0 and self.pk:
+            # محاسبه مبلغ کل از اقلام سفارش
+            total = 0
+            for item in self.order_items.all():
+                total += item.total_price
+            self.total_amount = total
         
         # محاسبه مبلغ نهایی
         self.calculate_final_amount()
         
         super().save(*args, **kwargs)
+        
+        # لاگ کردن عملیات
+        if is_new_order:
+            # سفارش جدید ایجاد شد
+            ActivityLog.log_activity(
+                user=get_current_user() or self.created_by,
+                action='CREATE',
+                description=f'🛒 سفارش جدید ایجاد شد: {self.order_number} - مشتری: {self.customer.customer_name} - مبلغ: {self.final_amount:,.0f} تومان',
+                content_object=self,
+                severity='HIGH',
+                extra_data={
+                    'order_id': self.id,
+                    'order_number': self.order_number,
+                    'customer_name': self.customer.customer_name,
+                    'customer_id': self.customer.id,
+                    'status': self.status,
+                    'payment_method': self.payment_method,
+                    'total_amount': str(self.total_amount),
+                    'final_amount': str(self.final_amount),
+                    'discount_percentage': str(self.discount_percentage),
+                    'items_count': self.get_order_items_count()
+                }
+            )
+        else:
+            # سفارش ویرایش شد - بررسی تغییرات مهم
+            changes = []
+            
+            if old_status != self.status:
+                changes.append(f'📊 وضعیت: {old_status} → {self.status}')
+            
+            if old_total_amount != self.total_amount:
+                changes.append(f'💰 مبلغ کل: {old_total_amount:,.0f} → {self.total_amount:,.0f} تومان')
+            
+            if old_final_amount != self.final_amount:
+                changes.append(f'💵 مبلغ نهایی: {old_final_amount:,.0f} → {self.final_amount:,.0f} تومان')
+            
+            if old_discount_percentage != self.discount_percentage:
+                changes.append(f'🎯 تخفیف: {old_discount_percentage}% → {self.discount_percentage}%')
+            
+            # اگر تغییرات مهمی وجود دارد، لاگ کن
+            if changes:
+                ActivityLog.log_activity(
+                    user=get_current_user(),
+                    action='UPDATE',
+                    description=f'📝 سفارش ویرایش شد: {self.order_number} - تغییرات: {", ".join(changes)}',
+                    content_object=self,
+                    severity='HIGH',
+                    extra_data={
+                        'order_id': self.id,
+                        'order_number': self.order_number,
+                        'customer_name': self.customer.customer_name,
+                        'changes': changes,
+                        'old_status': old_status,
+                        'new_status': self.status,
+                        'old_total_amount': str(old_total_amount) if old_total_amount else None,
+                        'new_total_amount': str(self.total_amount),
+                        'old_final_amount': str(old_final_amount) if old_final_amount else None,
+                        'new_final_amount': str(self.final_amount),
+                        'old_discount': str(old_discount_percentage) if old_discount_percentage else None,
+                        'new_discount': str(self.discount_percentage)
+                    }
+                )
     
     def generate_order_number(self):
         """
@@ -922,11 +1255,44 @@ class Order(BaseModel):
         📝 بررسی امکان ویرایش سفارش
         """
         return self.status == 'Pending'
+    
+    def delete(self, *args, **kwargs):
+        """
+        🗑️ حذف سفارش با لاگ کردن عملیات
+        """
+        from core.models import ActivityLog
+        
+        # دریافت کاربر فعلی
+        current_user = get_current_user()
+        
+        # لاگ کردن حذف سفارش فقط اگر کاربر معتبر باشد
+        if current_user and current_user.is_authenticated:
+            ActivityLog.log_activity(
+                user=current_user,
+                action='DELETE',
+                description=f'🗑️ سفارش حذف شد: {self.order_number} - مشتری: {self.customer.customer_name} - مبلغ: {self.final_amount:,.0f} تومان',
+                content_object=self,
+                severity='CRITICAL',
+                extra_data={
+                    'order_id': self.id,
+                    'order_number': self.order_number,
+                    'customer_name': self.customer.customer_name,
+                    'customer_id': self.customer.id,
+                    'status': self.status,
+                    'payment_method': self.payment_method,
+                    'total_amount': str(self.total_amount),
+                    'final_amount': str(self.final_amount),
+                    'discount_percentage': str(self.discount_percentage),
+                    'items_count': self.get_order_items_count()
+                }
+            )
+        
+        super().delete(*args, **kwargs)
 
 
 class OrderItem(BaseModel):
     """
-    📦 مدل آیتم سفارش - اقلام داخل هر سفارش
+    �� مدل آیتم سفارش - اقلام داخل هر سفارش
     
     🎯 این مدل برای ذخیره جزئیات محصولات داخل هر سفارش استفاده می‌شود
     📋 شامل محصول، تعداد، قیمت واحد، قیمت کل و نوع پرداخت
@@ -1011,8 +1377,32 @@ class OrderItem(BaseModel):
     
     def save(self, *args, **kwargs):
         """
-        💾 ذخیره آیتم با محاسبه خودکار قیمت کل
+        💾 ذخیره آیتم با محاسبه خودکار قیمت کل و لاگ کردن تغییرات
         """
+        from core.models import ActivityLog
+        
+        # بررسی اینکه آیا این یک آیتم جدید است یا ویرایش
+        is_new_item = not self.pk
+        
+        # اگر آیتم جدید نیست، اطلاعات قبلی را ذخیره کن
+        if not is_new_item:
+            try:
+                old_item = OrderItem.objects.get(pk=self.pk)
+                old_quantity = old_item.quantity
+                old_unit_price = old_item.unit_price
+                old_total_price = old_item.total_price
+                old_payment_method = old_item.payment_method
+            except OrderItem.DoesNotExist:
+                old_quantity = None
+                old_unit_price = None
+                old_total_price = None
+                old_payment_method = None
+        else:
+            old_quantity = None
+            old_unit_price = None
+            old_total_price = None
+            old_payment_method = None
+        
         # تنظیم قیمت واحد از محصول (در صورت عدم تنظیم)
         if not self.unit_price:
             self.unit_price = self.product.price
@@ -1028,6 +1418,67 @@ class OrderItem(BaseModel):
         )['total'] or 0
         self.order.calculate_final_amount()
         self.order.save()
+        
+        # لاگ کردن عملیات
+        if is_new_item:
+            # آیتم جدید ایجاد شد
+            ActivityLog.log_activity(
+                user=get_current_user(),
+                action='CREATE',
+                description=f'📦 آیتم سفارش اضافه شد: {self.product.reel_number} × {self.quantity} - سفارش: {self.order.order_number}',
+                content_object=self,
+                severity='MEDIUM',
+                extra_data={
+                    'order_item_id': self.id,
+                    'order_number': self.order.order_number,
+                    'product_reel': self.product.reel_number,
+                    'quantity': self.quantity,
+                    'unit_price': str(self.unit_price),
+                    'total_price': str(self.total_price),
+                    'payment_method': self.payment_method,
+                    'customer_name': self.order.customer.customer_name
+                }
+            )
+        else:
+            # آیتم ویرایش شد - بررسی تغییرات مهم
+            changes = []
+            
+            if old_quantity != self.quantity:
+                changes.append(f'🔢 تعداد: {old_quantity} → {self.quantity}')
+            
+            if old_unit_price != self.unit_price:
+                changes.append(f'💰 قیمت واحد: {old_unit_price:,.0f} → {self.unit_price:,.0f} تومان')
+            
+            if old_total_price != self.total_price:
+                changes.append(f'💵 قیمت کل: {old_total_price:,.0f} → {self.total_price:,.0f} تومان')
+            
+            if old_payment_method != self.payment_method:
+                changes.append(f'💳 روش پرداخت: {old_payment_method} → {self.payment_method}')
+            
+            # اگر تغییرات مهمی وجود دارد، لاگ کن
+            if changes:
+                ActivityLog.log_activity(
+                    user=get_current_user(),
+                    action='UPDATE',
+                    description=f'📝 آیتم سفارش ویرایش شد: {self.product.reel_number} - سفارش: {self.order.order_number} - تغییرات: {", ".join(changes)}',
+                    content_object=self,
+                    severity='MEDIUM',
+                    extra_data={
+                        'order_item_id': self.id,
+                        'order_number': self.order.order_number,
+                        'product_reel': self.product.reel_number,
+                        'changes': changes,
+                        'old_quantity': old_quantity,
+                        'new_quantity': self.quantity,
+                        'old_unit_price': str(old_unit_price) if old_unit_price else None,
+                        'new_unit_price': str(self.unit_price),
+                        'old_total_price': str(old_total_price) if old_total_price else None,
+                        'new_total_price': str(self.total_price),
+                        'old_payment_method': old_payment_method,
+                        'new_payment_method': self.payment_method,
+                        'customer_name': self.order.customer.customer_name
+                    }
+                )
     
     def clean(self):
         """
@@ -1079,6 +1530,37 @@ class OrderItem(BaseModel):
             'total_weight': f"{self.get_total_weight():.2f} کیلوگرم",
             'total_area': f"{self.get_total_area():.2f} متر مربع"
         }
+
+    def delete(self, *args, **kwargs):
+        """
+        🗑️ حذف آیتم سفارش با لاگ کردن عملیات
+        """
+        from core.models import ActivityLog
+        
+        # دریافت کاربر فعلی
+        current_user = get_current_user()
+        
+        # لاگ کردن حذف آیتم سفارش فقط اگر کاربر معتبر باشد
+        if current_user and current_user.is_authenticated:
+            ActivityLog.log_activity(
+                user=current_user,
+                action='DELETE',
+                description=f'🗑️ آیتم سفارش حذف شد: {self.product.reel_number} × {self.quantity} - سفارش: {self.order.order_number}',
+                content_object=self,
+                severity='HIGH',
+                extra_data={
+                    'order_item_id': self.id,
+                    'order_number': self.order.order_number,
+                    'product_reel': self.product.reel_number,
+                    'quantity': self.quantity,
+                    'unit_price': str(self.unit_price),
+                    'total_price': str(self.total_price),
+                    'payment_method': self.payment_method,
+                    'customer_name': self.order.customer.customer_name
+                }
+            )
+        
+        super().delete(*args, **kwargs)
 
 
 class WorkingHours(BaseModel):
@@ -1138,13 +1620,13 @@ class WorkingHours(BaseModel):
     
     # 👑 کاربری که ساعات کاری را تنظیم کرده
     set_by = models.ForeignKey(
-        User,
+        "accounts.User",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='set_working_hours',
-        verbose_name="👑 تنظیم شده توسط",
-        help_text="Super Admin که این ساعات کاری را تنظیم کرده است"
+        verbose_name="👑 تنظیم‌کننده",
+        help_text="کاربری که ساعات کاری را تنظیم کرده است"
     )
     
     class Meta:

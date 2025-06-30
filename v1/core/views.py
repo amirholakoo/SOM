@@ -984,8 +984,16 @@ def cart_view(request):
     
     # بررسی وجود پروفایل مشتری
     try:
-        customer = Customer.objects.get(customer_name=request.user.get_full_name())
-    except Customer.DoesNotExist:
+        # استفاده از first() به جای get() برای جلوگیری از MultipleObjectsReturned
+        customer = Customer.objects.filter(
+            customer_name=request.user.get_full_name() or request.user.username
+        ).first()
+        
+        # اگر مشتری پیدا نشد، سعی کن با شماره تلفن پیدا کن
+        if not customer and request.user.phone:
+            customer = Customer.objects.filter(phone=request.user.phone).first()
+            
+    except Exception as e:
         customer = None
     
     context = {
@@ -1011,19 +1019,48 @@ def checkout_view(request):
         return redirect('core:products_landing')
     
     try:
-        # پیدا کردن یا ایجاد پروفایل مشتری
-        customer, created = Customer.objects.get_or_create(
-            customer_name=request.user.get_full_name(),
-            defaults={
-                'phone': request.user.phone,
-                'status': 'Active'
-            }
-        )
+        # پیدا کردن یا ایجاد پروفایل مشتری با استفاده از نام و شماره تلفن
+        customer_name = request.user.get_full_name() or request.user.username
+        customer_phone = request.user.phone
         
-        # ایجاد سفارش - استفاده از پیش‌فرض "Mixed" برای سفارشات با چند نوع پرداخت
+        # ابتدا سعی کن با نام و شماره تلفن پیدا کن
+        if customer_phone:
+            customer = Customer.objects.filter(
+                customer_name=customer_name,
+                phone=customer_phone
+            ).first()
+        else:
+            # اگر شماره تلفن نبود، فقط با نام پیدا کن
+            customer = Customer.objects.filter(customer_name=customer_name).first()
+        
+        # اگر مشتری پیدا نشد، ایجاد کن
+        if not customer:
+            try:
+                customer = Customer.objects.create(
+                    customer_name=customer_name,
+                    phone=customer_phone or '',
+                    status='Active',
+                    comments=f'🔵 پروفایل خودکار ایجاد شده برای کاربر: {request.user.username}'
+                )
+            except Exception as e:
+                # اگر خطای unique constraint رخ داد، سعی کن مشتری موجود را پیدا کن
+                if 'UNIQUE constraint failed' in str(e):
+                    customer = Customer.objects.filter(customer_name=customer_name).first()
+                    if not customer:
+                        raise e
+                else:
+                    raise e
+        
+        # محاسبه مبلغ کل سفارش
+        total_amount = 0
+        for cart_key, item in cart.items():
+            total_amount += item['quantity'] * item['unit_price']
+        
+        # ایجاد سفارش
         order = Order.objects.create(
             customer=customer,
             payment_method='Cash',  # پیش‌فرض - حالا در OrderItem نوع واقعی ذخیره می‌شود
+            total_amount=total_amount,  # تنظیم مبلغ کل
             notes=request.POST.get('notes', ''),
             delivery_address=request.POST.get('delivery_address', ''),
             created_by=request.user
@@ -1050,6 +1087,7 @@ def checkout_view(request):
         
         # پاک کردن سبد خرید
         request.session['cart'] = {}
+        request.session.save()  # اطمینان از ذخیره session
         
         # ثبت لاگ
         ActivityLog.log_activity(
@@ -1069,7 +1107,10 @@ def checkout_view(request):
         return redirect('core:order_detail', order_id=order.id)
         
     except Exception as e:
-        messages.error(request, '❌ خطا در ثبت سفارش. لطفاً مجدداً تلاش کنید')
+        import traceback
+        print(f"❌ خطا در checkout_view: {e}")
+        print(f"📋 Traceback: {traceback.format_exc()}")
+        messages.error(request, f'❌ خطا در ثبت سفارش: {str(e)}')
         return redirect('core:cart')
 
 
@@ -1085,9 +1126,13 @@ def order_detail_view(request, order_id):
         # بررسی دسترسی
         if request.user.role == User.UserRole.CUSTOMER:
             # مشتریان فقط سفارشات خودشان را ببینند
-            if order.customer.customer_name != request.user.get_full_name():
-                messages.error(request, '❌ شما اجازه مشاهده این سفارش را ندارید')
-                return redirect('accounts:customer_dashboard')
+            # استفاده از نام کاربری یا نام کامل برای مقایسه
+            user_identifier = request.user.get_full_name() or request.user.username
+            if order.customer.customer_name != user_identifier:
+                # اگر نام مطابقت نداشت، سعی کن با شماره تلفن چک کن
+                if order.customer.phone != request.user.phone:
+                    messages.error(request, '❌ شما اجازه مشاهده این سفارش را ندارید')
+                    return redirect('accounts:customer_dashboard')
         
         # ثبت لاگ مشاهده
         ActivityLog.log_activity(
