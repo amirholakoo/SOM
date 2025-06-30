@@ -1,11 +1,57 @@
-{% extends "base.html" %}
-{% load static %}
-
-{% block title %}
-📊 داشبورد - HomayOMS
-{% endblock %}
-
-{% block content %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 داشبورد - HomayOMS</title>
+    
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Vazirmatn', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .navbar-brand {
+            font-weight: bold;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        .feature-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-decoration: none;
+            display: block;
+            transition: all 0.3s ease;
+        }
+        .feature-card:hover {
+            color: white;
+            transform: translateY(-3px);
+        }
+        .role-badge {
+            font-size: 0.9rem;
+            padding: 8px 15px;
+            border-radius: 20px;
+        }
+        .sidebar {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+            padding: 20px;
+            height: fit-content;
+        }
+    </style>
+</head>
+<body>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
@@ -214,4 +260,5 @@
     </div>
 
     
-{% endblock %}
+</body>
+</html> 

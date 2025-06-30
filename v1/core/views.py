@@ -1106,6 +1106,7 @@ def order_detail_view(request, order_id):
             'order_items': order.order_items.all(),
             'can_cancel': order.can_be_cancelled(),
             'can_modify': order.can_be_modified(),
+            'user': request.user,
         }
         
         return render(request, 'core/order_detail.html', context)
@@ -1241,4 +1242,200 @@ def update_cart_payment_method_view(request):
         return JsonResponse({
             'success': False,
             'message': '❌ خطا در به‌روزرسانی نوع پرداخت'
+        })
+
+
+@login_required
+@super_admin_permission_required('manage_orders')
+@require_http_methods(["POST"])
+def confirm_order_view(request, order_id):
+    """✅ تایید سفارش توسط Super Admin"""
+    
+    try:
+        order = Order.objects.get(id=order_id)
+        
+        # بررسی اینکه سفارش در وضعیت "در انتظار تایید" باشد
+        if order.status != 'Pending':
+            messages.error(request, f'❌ سفارش {order.order_number} در وضعیت قابل تایید نیست.')
+            return JsonResponse({
+                'success': False,
+                'message': f'سفارش {order.order_number} در وضعیت قابل تایید نیست.'
+            })
+        
+        # تغییر وضعیت به "تایید شده"
+        old_status = order.status
+        order.status = 'Confirmed'
+        order.save()
+        
+        # 📜 ثبت لاگ تایید سفارش
+        ActivityLog.log_activity(
+            user=request.user,
+            action='APPROVE',
+            description=f'تایید سفارش {order.order_number} توسط {request.user.username}',
+            content_object=order,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', ''),
+            severity='MEDIUM',
+            extra_data={
+                'order_number': order.order_number,
+                'old_status': old_status,
+                'new_status': order.status,
+                'customer_name': order.customer.customer_name,
+                'final_amount': str(order.final_amount)
+            }
+        )
+        
+        messages.success(request, f'✅ سفارش {order.order_number} با موفقیت تایید شد.')
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'سفارش {order.order_number} با موفقیت تایید شد.',
+            'new_status': order.get_status_display(),
+            'order_id': order.id
+        })
+        
+    except Order.DoesNotExist:
+        messages.error(request, '❌ سفارش مورد نظر یافت نشد.')
+        return JsonResponse({
+            'success': False,
+            'message': 'سفارش مورد نظر یافت نشد.'
+        })
+    except Exception as e:
+        messages.error(request, f'❌ خطا در تایید سفارش: {str(e)}')
+        return JsonResponse({
+            'success': False,
+            'message': f'خطا در تایید سفارش: {str(e)}'
+        })
+
+
+@login_required
+@super_admin_permission_required('manage_orders')
+@require_http_methods(["POST"])
+def cancel_order_view(request, order_id):
+    """❌ لغو سفارش توسط Super Admin"""
+    
+    try:
+        order = Order.objects.get(id=order_id)
+        
+        # بررسی اینکه سفارش قابل لغو باشد
+        if order.status in ['Delivered', 'Cancelled', 'Returned']:
+            messages.error(request, f'❌ سفارش {order.order_number} قابل لغو نیست.')
+            return JsonResponse({
+                'success': False,
+                'message': f'سفارش {order.order_number} قابل لغو نیست.'
+            })
+        
+        # تغییر وضعیت به "لغو شده"
+        old_status = order.status
+        order.status = 'Cancelled'
+        order.save()
+        
+        # 📜 ثبت لاگ لغو سفارش
+        ActivityLog.log_activity(
+            user=request.user,
+            action='CANCEL',
+            description=f'لغو سفارش {order.order_number} توسط {request.user.username}',
+            content_object=order,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', ''),
+            severity='HIGH',
+            extra_data={
+                'order_number': order.order_number,
+                'old_status': old_status,
+                'new_status': order.status,
+                'customer_name': order.customer.customer_name,
+                'final_amount': str(order.final_amount)
+            }
+        )
+        
+        messages.success(request, f'❌ سفارش {order.order_number} با موفقیت لغو شد.')
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'سفارش {order.order_number} با موفقیت لغو شد.',
+            'new_status': order.get_status_display(),
+            'order_id': order.id
+        })
+        
+    except Order.DoesNotExist:
+        messages.error(request, '❌ سفارش مورد نظر یافت نشد.')
+        return JsonResponse({
+            'success': False,
+            'message': 'سفارش مورد نظر یافت نشد.'
+        })
+    except Exception as e:
+        messages.error(request, f'❌ خطا در لغو سفارش: {str(e)}')
+        return JsonResponse({
+            'success': False,
+            'message': f'خطا در لغو سفارش: {str(e)}'
+        })
+
+
+@login_required
+@super_admin_permission_required('manage_orders')
+@require_http_methods(["POST"])
+def update_order_status_view(request, order_id):
+    """📊 تغییر وضعیت سفارش توسط Super Admin"""
+    
+    try:
+        order = Order.objects.get(id=order_id)
+        new_status = request.POST.get('status')
+        
+        if not new_status:
+            return JsonResponse({
+                'success': False,
+                'message': 'وضعیت جدید مشخص نشده است.'
+            })
+        
+        # بررسی معتبر بودن وضعیت جدید
+        valid_statuses = [choice[0] for choice in Order.ORDER_STATUS_CHOICES]
+        if new_status not in valid_statuses:
+            return JsonResponse({
+                'success': False,
+                'message': 'وضعیت نامعتبر است.'
+            })
+        
+        # تغییر وضعیت
+        old_status = order.status
+        order.status = new_status
+        order.save()
+        
+        # 📜 ثبت لاگ تغییر وضعیت
+        ActivityLog.log_activity(
+            user=request.user,
+            action='UPDATE',
+            description=f'تغییر وضعیت سفارش {order.order_number} از {old_status} به {new_status} توسط {request.user.username}',
+            content_object=order,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', ''),
+            severity='MEDIUM',
+            extra_data={
+                'order_number': order.order_number,
+                'old_status': old_status,
+                'new_status': new_status,
+                'customer_name': order.customer.customer_name,
+                'final_amount': str(order.final_amount)
+            }
+        )
+        
+        messages.success(request, f'📊 وضعیت سفارش {order.order_number} به {order.get_status_display()} تغییر یافت.')
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'وضعیت سفارش {order.order_number} با موفقیت تغییر یافت.',
+            'new_status': order.get_status_display(),
+            'order_id': order.id
+        })
+        
+    except Order.DoesNotExist:
+        messages.error(request, '❌ سفارش مورد نظر یافت نشد.')
+        return JsonResponse({
+            'success': False,
+            'message': 'سفارش مورد نظر یافت نشد.'
+        })
+    except Exception as e:
+        messages.error(request, f'❌ خطا در تغییر وضعیت سفارش: {str(e)}')
+        return JsonResponse({
+            'success': False,
+            'message': f'خطا در تغییر وضعیت سفارش: {str(e)}'
         })

@@ -4,46 +4,48 @@
 {% block title %}🔐 ورود به سیستم - HomayOMS{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-    <div class="max-w-4xl w-full">
+<div class="login-container">
+    <div class="login-content">
         <!-- 🏢 لوگو و عنوان اصلی -->
-        <div class="text-center mb-12">
-            <div class="mx-auto h-20 w-20 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <svg class="h-10 w-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="login-header">
+            <div class="login-logo">
+                <svg class="icon" style="width: 2.5rem; height: 2.5rem; color: white;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
                 </svg>
             </div>
-            <h1 class="mt-6 text-4xl font-bold text-gray-900">
-                🏢 HomayOMS
+            <h1 class="text-4xl font-bold text-center mb-2">
+                �� HomayOMS
             </h1>
-            <p class="mt-2 text-xl text-gray-600">
+            <p class="text-xl text-center mb-2" style="color: #6b7280;">
                 سیستم مدیریت موجودی و سفارشات
             </p>
-            <p class="mt-1 text-sm text-gray-500">
+            <p class="text-sm text-center" style="color: #9ca3af;">
                 لطفاً نوع ورود خود را انتخاب کنید
             </p>
         </div>
 
         <!-- 💬 پیام‌های سیستم -->
         {% if messages %}
-            <div class="mb-8 space-y-2">
+            <div class="messages">
                 {% for message in messages %}
-                    <div class="p-4 rounded-lg {% if message.tags == 'error' %}bg-red-50 border border-red-200 text-red-700{% else %}bg-green-50 border border-green-200 text-green-700{% endif %}">
-                        <div class="flex">
-                            <div class="flex-shrink-0">
-                                {% if message.tags == 'error' %}
-                                    <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
-                                    </svg>
-                                {% else %}
-                                    <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                                    </svg>
-                                {% endif %}
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm font-medium">{{ message }}</p>
-                            </div>
+                    <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %}">
+                        <div style="flex-shrink: 0;">
+                            {% if message.tags == 'error' %}
+                                <svg class="icon" style="color: #dc2626;" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                                </svg>
+                            {% elif message.tags == 'success' %}
+                                <svg class="icon" style="color: #10b981;" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                </svg>
+                            {% else %}
+                                <svg class="icon" style="color: #2563eb;" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                </svg>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <p style="font-weight: 500;">{{ message }}</p>
                         </div>
                     </div>
                 {% endfor %}
@@ -51,126 +53,87 @@
         {% endif %}
 
         <!-- 🎯 کارت‌های ورود -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div class="role-grid">
             
             <!-- 🔴 مدیر ارشد -->
-            <div class="bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
-                <div class="p-8">
-                    <div class="text-center">
-                        <div class="mx-auto h-16 w-16 bg-red-600 rounded-full flex items-center justify-center mb-6">
-                            <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-                            </svg>
-                        </div>
-                        <h3 class="text-2xl font-bold text-gray-900 mb-2">🔴 مدیر ارشد</h3>
-                        <p class="text-gray-600 mb-6">دسترسی کامل به تمام بخش‌های سیستم</p>
-                        <a href="{% url 'accounts:staff_login' %}?role=super_admin" 
-                           class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200">
-                            ورود به سیستم
-                            <svg class="ml-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
-                            </svg>
-                        </a>
-                    </div>
+            <div class="role-card">
+                <div class="role-icon super-admin">
+                    <svg class="icon" style="width: 2rem; height: 2rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                    </svg>
                 </div>
+                <h3>🔴 مدیر ارشد</h3>
+                <p>دسترسی کامل به تمام بخش‌های سیستم</p>
+                <a href="{% url 'accounts:staff_login' %}?role=super_admin" class="btn btn-super-admin">
+                    ورود به سیستم
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                    </svg>
+                </a>
             </div>
 
             <!-- 🟡 ادمین -->
-            <div class="bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
-                <div class="p-8">
-                    <div class="text-center">
-                        <div class="mx-auto h-16 w-16 bg-yellow-600 rounded-full flex items-center justify-center mb-6">
-                            <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"></path>
-                            </svg>
-                        </div>
-                        <h3 class="text-2xl font-bold text-gray-900 mb-2">🟡 ادمین</h3>
-                        <p class="text-gray-600 mb-6">مدیریت عملیات روزانه و گزارش‌گیری</p>
-                        <a href="{% url 'accounts:staff_login' %}?role=admin" 
-                           class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-200">
-                            ورود به سیستم
-                            <svg class="ml-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
-                            </svg>
-                        </a>
-                    </div>
+            <div class="role-card">
+                <div class="role-icon admin">
+                    <svg class="icon" style="width: 2rem; height: 2rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"></path>
+                    </svg>
                 </div>
+                <h3>🟡 ادمین</h3>
+                <p>مدیریت عملیات روزانه و گزارش‌گیری</p>
+                <a href="{% url 'accounts:staff_login' %}?role=admin" class="btn btn-admin">
+                    ورود به سیستم
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                    </svg>
+                </a>
             </div>
 
             <!-- 🟢 مالی -->
-            <div class="bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
-                <div class="p-8">
-                    <div class="text-center">
-                        <div class="mx-auto h-16 w-16 bg-green-600 rounded-full flex items-center justify-center mb-6">
-                            <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-                            </svg>
-                        </div>
-                        <h3 class="text-2xl font-bold text-gray-900 mb-2">🟢 مالی</h3>
-                        <p class="text-gray-600 mb-6">مدیریت مالی، قیمت‌ها و فاکتورها</p>
-                        <a href="{% url 'accounts:staff_login' %}?role=finance" 
-                           class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200">
-                            ورود به سیستم
-                            <svg class="ml-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
-                            </svg>
-                        </a>
-                    </div>
+            <div class="role-card">
+                <div class="role-icon finance">
+                    <svg class="icon" style="width: 2rem; height: 2rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                    </svg>
                 </div>
+                <h3>🟢 مالی</h3>
+                <p>مدیریت مالی، قیمت‌ها و فاکتورها</p>
+                <a href="{% url 'accounts:staff_login' %}?role=finance" class="btn btn-finance">
+                    ورود به سیستم
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                    </svg>
+                </a>
             </div>
 
             <!-- 🔵 مشتری -->
-            <div class="bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
-                <div class="p-8">
-                    <div class="text-center">
-                        <div class="mx-auto h-16 w-16 bg-blue-600 rounded-full flex items-center justify-center mb-6">
-                            <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                            </svg>
-                        </div>
-                        <h3 class="text-2xl font-bold text-gray-900 mb-2">🔵 مشتری</h3>
-                        <p class="text-gray-600 mb-6">ورود با احراز هویت SMS</p>
-                        <a href="{% url 'accounts:customer_login' %}" 
-                           class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
-                            ورود با SMS
-                            <svg class="ml-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
-                            </svg>
-                        </a>
-                    </div>
+            <div class="role-card">
+                <div class="role-icon customer">
+                    <svg class="icon" style="width: 2rem; height: 2rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                    </svg>
                 </div>
+                <h3>🔵 مشتری</h3>
+                <p>ورود با احراز هویت SMS</p>
+                <a href="{% url 'accounts:customer_login' %}" class="btn btn-customer">
+                    ورود با SMS
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                    </svg>
+                </a>
             </div>
 
         </div>
 
         <!-- 📞 اطلاعات تماس -->
-        <div class="mt-12 text-center">
-            <p class="text-sm text-gray-500">
-                📞 برای پشتیبانی: <a href="tel:+989123456789" class="text-blue-600 hover:text-blue-500">0912-345-6789</a>
+        <div class="contact-info">
+            <p class="text-sm">
+                📞 برای پشتیبانی: <a href="tel:+989123456789">0912-345-6789</a>
             </p>
-            <p class="text-sm text-gray-500 mt-1">
-                📧 ایمیل: <a href="mailto:support@homayoms.com" class="text-blue-600 hover:text-blue-500">support@homayoms.com</a>
+            <p class="text-sm mt-1">
+                📧 ایمیل: <a href="mailto:support@homayoms.com">support@homayoms.com</a>
             </p>
         </div>
     </div>
 </div>
-
-<!-- 🎨 استایل‌های اضافی -->
-<style>
-    .bg-gradient-to-br {
-        background: linear-gradient(135deg, #EBF8FF 0%, #E6FFFA 0%, #F3E8FF 100%);
-    }
-    
-    .hover\:shadow-2xl:hover {
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    }
-    
-    .transform {
-        transition: transform 0.3s ease-in-out;
-    }
-    
-    .hover\:-translate-y-2:hover {
-        transform: translateY(-0.5rem);
-    }
-</style>
-{% endblock %} 
+{% endblock %}

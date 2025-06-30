@@ -4,6 +4,7 @@
 {% block title %}📋 مدیریت سفارشات - HomayOMS{% endblock %}
 
 {% block content %}
+{% csrf_token %}
 <div class="container mt-4">
     <div class="row mb-4">
         <div class="col-md-8">
@@ -137,6 +138,42 @@
                             <a href="{% url 'core:order_detail' order.id %}" class="btn btn-outline-primary btn-sm">
                                 👁️ مشاهده جزئیات
                             </a>
+                            
+                            {% if user.is_super_admin %}
+                                {% if order.status == 'Pending' %}
+                                    <button class="btn btn-success btn-sm confirm-order-btn" 
+                                            data-order-id="{{ order.id }}" 
+                                            data-order-number="{{ order.order_number }}">
+                                        ✅ تایید سفارش
+                                    </button>
+                                    <button class="btn btn-danger btn-sm cancel-order-btn" 
+                                            data-order-id="{{ order.id }}" 
+                                            data-order-number="{{ order.order_number }}">
+                                        ❌ لغو سفارش
+                                    </button>
+                                {% elif order.status == 'Confirmed' %}
+                                    <button class="btn btn-info btn-sm update-status-btn" 
+                                            data-order-id="{{ order.id }}" 
+                                            data-order-number="{{ order.order_number }}"
+                                            data-current-status="{{ order.status }}">
+                                        📊 تغییر وضعیت
+                                    </button>
+                                {% elif order.status == 'Processing' %}
+                                    <button class="btn btn-warning btn-sm update-status-btn" 
+                                            data-order-id="{{ order.id }}" 
+                                            data-order-number="{{ order.order_number }}"
+                                            data-current-status="{{ order.status }}">
+                                        📊 تغییر وضعیت
+                                    </button>
+                                {% elif order.status == 'Ready' %}
+                                    <button class="btn btn-primary btn-sm update-status-btn" 
+                                            data-order-id="{{ order.id }}" 
+                                            data-order-number="{{ order.order_number }}"
+                                            data-current-status="{{ order.status }}">
+                                        📊 تغییر وضعیت
+                                    </button>
+                                {% endif %}
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -184,4 +221,179 @@
         </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // تایید سفارش
+    $('.confirm-order-btn').click(function() {
+        const orderId = $(this).data('order-id');
+        const orderNumber = $(this).data('order-number');
+        
+        if (confirm(`آیا از تایید سفارش ${orderNumber} اطمینان دارید؟`)) {
+            $.ajax({
+                url: `/core/orders/${orderId}/confirm/`,
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // نمایش پیام موفقیت
+                        showAlert('success', response.message);
+                        // به‌روزرسانی صفحه
+                        setTimeout(function() {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        showAlert('error', response.message);
+                    }
+                },
+                error: function() {
+                    showAlert('error', 'خطا در ارتباط با سرور');
+                }
+            });
+        }
+    });
+    
+    // لغو سفارش
+    $('.cancel-order-btn').click(function() {
+        const orderId = $(this).data('order-id');
+        const orderNumber = $(this).data('order-number');
+        
+        if (confirm(`آیا از لغو سفارش ${orderNumber} اطمینان دارید؟`)) {
+            $.ajax({
+                url: `/core/orders/${orderId}/cancel/`,
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showAlert('success', response.message);
+                        setTimeout(function() {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        showAlert('error', response.message);
+                    }
+                },
+                error: function() {
+                    showAlert('error', 'خطا در ارتباط با سرور');
+                }
+            });
+        }
+    });
+    
+    // تغییر وضعیت سفارش
+    $('.update-status-btn').click(function() {
+        const orderId = $(this).data('order-id');
+        const orderNumber = $(this).data('order-number');
+        const currentStatus = $(this).data('current-status');
+        
+        // ایجاد modal برای انتخاب وضعیت جدید
+        const statusChoices = {
+            'Confirmed': '✅ تایید شده',
+            'Processing': '🔄 در حال پردازش',
+            'Ready': '📦 آماده تحویل',
+            'Delivered': '🚚 تحویل داده شده',
+            'Cancelled': '❌ لغو شده',
+            'Returned': '↩️ مرجوع شده'
+        };
+        
+        let statusOptions = '';
+        for (const [key, value] of Object.entries(statusChoices)) {
+            if (key !== currentStatus) {
+                statusOptions += `<option value="${key}">${value}</option>`;
+            }
+        }
+        
+        const modalHtml = `
+            <div class="modal fade" id="statusModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">📊 تغییر وضعیت سفارش ${orderNumber}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>وضعیت فعلی: <strong>${statusChoices[currentStatus]}</strong></p>
+                            <label class="form-label">وضعیت جدید:</label>
+                            <select class="form-select" id="newStatus">
+                                ${statusOptions}
+                            </select>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                            <button type="button" class="btn btn-primary" id="updateStatusBtn">تغییر وضعیت</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // حذف modal قبلی اگر وجود دارد
+        $('#statusModal').remove();
+        
+        // اضافه کردن modal جدید
+        $('body').append(modalHtml);
+        
+        const modal = new bootstrap.Modal(document.getElementById('statusModal'));
+        modal.show();
+        
+        // رویداد کلیک روی دکمه تغییر وضعیت
+        $('#updateStatusBtn').click(function() {
+            const newStatus = $('#newStatus').val();
+            
+            $.ajax({
+                url: `/core/orders/${orderId}/update-status/`,
+                method: 'POST',
+                data: {
+                    status: newStatus
+                },
+                headers: {
+                    'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        modal.hide();
+                        showAlert('success', response.message);
+                        setTimeout(function() {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        showAlert('error', response.message);
+                    }
+                },
+                error: function() {
+                    showAlert('error', 'خطا در ارتباط با سرور');
+                }
+            });
+        });
+    });
+    
+    // تابع نمایش پیام‌ها
+    function showAlert(type, message) {
+        const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+        const alertHtml = `
+            <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        
+        // حذف پیام‌های قبلی
+        $('.alert').remove();
+        
+        // اضافه کردن پیام جدید
+        $('.container').prepend(alertHtml);
+        
+        // حذف خودکار پیام بعد از 5 ثانیه
+        setTimeout(function() {
+            $('.alert').fadeOut();
+        }, 5000);
+    }
+});
+</script>
 {% endblock %}

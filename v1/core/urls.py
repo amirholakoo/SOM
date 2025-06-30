@@ -19,6 +19,9 @@ urlpatterns = [
     
     # 📋 مدیریت سفارشات
     path('orders/', views.orders_list_view, name='orders_list'),
+    path('orders/<int:order_id>/confirm/', views.confirm_order_view, name='confirm_order'),
+    path('orders/<int:order_id>/cancel/', views.cancel_order_view, name='cancel_order'),
+    path('orders/<int:order_id>/update-status/', views.update_order_status_view, name='update_order_status'),
     
     # 👥 مدیریت مشتریان
     path('customers/', views.customers_list_view, name='customers_list'),

@@ -68,38 +68,15 @@ def staff_login_view(request):
 
 
 def customer_login_view(request):
-    """🔵 ورود مشتریان با احراز هویت SMS"""
+    """🔵 ورود مشتریان - هدایت به صفحه SMS"""
     if request.user.is_authenticated:
         if request.user.is_customer():
             return redirect('accounts:customer_dashboard')
         else:
             return redirect('accounts:dashboard')
     
-    if request.method == 'POST':
-        phone = request.POST.get('phone')
-        
-        # بررسی شماره تلفن
-        if not phone or not phone.startswith('09'):
-            messages.error(request, '❌ شماره تلفن معتبر وارد کنید')
-            return render(request, 'accounts/customer_login.html')
-        
-        # بررسی وجود کاربر با این شماره تلفن
-        try:
-            user = User.objects.get(phone=phone, role=User.UserRole.CUSTOMER)
-            if user.status != User.UserStatus.ACTIVE:
-                messages.error(request, '❌ حساب کاربری شما فعال نیست. لطفاً با پشتیبانی تماس بگیرید.')
-                return render(request, 'accounts/customer_login.html')
-            
-            # TODO: اینجا کد SMS ارسال می‌شود
-            # برای حالا، مستقیماً لاگین می‌کنیم
-            login(request, user)
-            messages.success(request, f'🎉 خوش آمدید مشتری گرامی {user.get_full_name() or user.username}!')
-            return redirect('accounts:customer_dashboard')
-            
-        except User.DoesNotExist:
-            messages.error(request, '❌ شماره تلفن در سیستم ثبت نشده است')
-    
-    return render(request, 'accounts/customer_login.html')
+    # مستقیماً به صفحه SMS login هدایت می‌کنیم
+    return redirect('accounts:customer_sms_login')
 
 
 @login_required

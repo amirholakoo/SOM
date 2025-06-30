@@ -206,17 +206,21 @@
                     <h4 style="color: #2c3e50; margin-bottom: 1.5rem;">🎯 عملیات</h4>
                     
                     <div class="d-grid gap-2">
-                        <a href="{% url 'core:products_landing' %}" class="btn-action">
-                            🛒 ادامه خرید
-                        </a>
-                        
-                        {% if user.role != 'customer' %}
+                        {% if user.role == 'customer' %}
+                            <a href="{% url 'core:products_landing' %}" class="btn-action">
+                                🛒 ادامه خرید
+                            </a>
+                            
+                            <a href="{% url 'accounts:customer_dashboard' %}" class="btn-action">
+                                🏠 داشبورد
+                            </a>
+                        {% else %}
                             <a href="{% url 'core:orders_list' %}" class="btn-action">
                                 📋 لیست سفارشات
                             </a>
-                        {% else %}
-                            <a href="{% url 'accounts:customer_dashboard' %}" class="btn-action">
-                                🏠 داشبورد
+                            
+                            <a href="{% url 'core:admin_dashboard' %}" class="btn-action">
+                                📊 داشبورد مدیریت
                             </a>
                         {% endif %}
                         
