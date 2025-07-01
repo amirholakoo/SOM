@@ -39,4 +39,10 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]    # 📂 مسیرهای �
 
 # 🖼️ تنظیمات فایل‌های رسانه‌ای (عکس، ویدیو، فایل)
 MEDIA_URL = '/media/'                                     # 🔗 آدرس URL فایل‌های رسانه‌ای
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')             # 📂 مسیر ذخیره فایل‌های آپلود شده 
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')             # 📂 مسیر ذخیره فایل‌های آپلود شده
+
+# 💳 تنظیمات درگاه‌های پرداخت ایرانی
+PAYMENT_SANDBOX = config('PAYMENT_SANDBOX', default=True, cast=bool)  # 🧪 حالت sandbox
+ZARINPAL_MERCHANT_ID = config('ZARINPAL_MERCHANT_ID', default='')     # 💎 کد پذیرنده زرین‌پال
+SHAPARAK_TERMINAL_ID = config('SHAPARAK_TERMINAL_ID', default='')     # 🏦 شناسه ترمینال شاپرک
+SHAPARAK_MERCHANT_ID = config('SHAPARAK_MERCHANT_ID', default='')     # 🏦 کد پذیرنده شاپرک 

@@ -236,9 +236,14 @@ class Customer(BaseModel):
         except Exception:
             pass
         # ActivityLog (optional, can be removed if not needed)
+        # Only log if current_user is a valid authenticated User instance
+        user_for_log = None
+        if current_user and hasattr(current_user, 'is_authenticated') and current_user.is_authenticated:
+            user_for_log = current_user
+        
         if is_new:
             ActivityLog.log_activity(
-                user=current_user,
+                user=user_for_log,
                 action='CREATE',
                 description=f'Customer created: {self.customer_name} - {self.phone}',
                 content_object=self,
@@ -255,7 +260,7 @@ class Customer(BaseModel):
             )
         else:
             ActivityLog.log_activity(
-                user=current_user,
+                user=user_for_log,
                 action='UPDATE',
                 description=f'Customer updated: {self.customer_name}',
                 content_object=self,
@@ -799,6 +804,12 @@ class ActivityLog(BaseModel):
                 gsm=80
             )
         """
+        # Validate user parameter to prevent AnonymousUser errors
+        if user and not hasattr(user, 'is_authenticated'):
+            user = None  # Convert invalid user objects to None
+        elif user and hasattr(user, 'is_authenticated') and not user.is_authenticated:
+            user = None  # Convert anonymous users to None
+        
         return cls.objects.create(
             user=user,
             action=action,

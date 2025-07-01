@@ -217,7 +217,7 @@ class User(AbstractUser, BaseModel):
         current_user = get_current_user()
         
         # لاگ کردن عملیات فقط اگر کاربر معتبر باشد
-        if current_user and current_user.is_authenticated:
+        if current_user and hasattr(current_user, 'is_authenticated') and current_user.is_authenticated:
             if is_new_user:
                 # کاربر جدید ایجاد شد
                 ActivityLog.log_activity(

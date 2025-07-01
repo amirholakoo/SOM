@@ -423,9 +423,19 @@ def customer_registration_view(request):
                 date_joined=timezone.now()
             )
             
+            # ایجاد نام منحصر به فرد برای مشتری
+            base_customer_name = f"{first_name} {last_name}"
+            customer_name = base_customer_name
+            counter = 1
+            
+            # اگر نام تکراری است، شماره اضافه کن
+            while Customer.objects.filter(customer_name=customer_name).exists():
+                customer_name = f"{base_customer_name} ({counter})"
+                counter += 1
+            
             # ایجاد Customer object
             customer = Customer.objects.create(
-                customer_name=f"{first_name} {last_name}",
+                customer_name=customer_name,
                 phone=phone,
                 address=address,
                 economic_code=economic_code,
@@ -506,11 +516,8 @@ def verify_customer_view(request, user_id):
         user.is_active = True
         user.save()
         
-        # تغییر وضعیت Customer object
-        customer = Customer.objects.filter(
-            customer_name=f"{user.first_name} {user.last_name}",
-            phone=user.phone
-        ).first()
+        # تغییر وضعیت Customer object (جستجو بر اساس شماره تلفن)
+        customer = Customer.objects.filter(phone=user.phone).first()
         
         if customer:
             customer.status = 'Active'
@@ -559,11 +566,8 @@ def reject_customer_view(request, user_id):
             messages.error(request, '❌ این کاربر قبلاً تایید شده است')
             return redirect('accounts:user_list')
         
-        # حذف Customer object مرتبط
-        customer = Customer.objects.filter(
-            customer_name=f"{user.first_name} {user.last_name}",
-            phone=user.phone
-        ).first()
+        # حذف Customer object مرتبط (جستجو بر اساس شماره تلفن)
+        customer = Customer.objects.filter(phone=user.phone).first()
         
         if customer:
             customer.delete()

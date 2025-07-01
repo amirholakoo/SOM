@@ -15,7 +15,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from config import (
     SECRET_KEY, DEBUG, ALLOWED_HOSTS, 
     STATIC_URL, STATIC_ROOT, STATICFILES_DIRS,
-    MEDIA_URL, MEDIA_ROOT, CORS_ALLOWED_ORIGINS
+    MEDIA_URL, MEDIA_ROOT, CORS_ALLOWED_ORIGINS,
+    PAYMENT_SANDBOX, ZARINPAL_MERCHANT_ID, 
+    SHAPARAK_TERMINAL_ID, SHAPARAK_MERCHANT_ID
 )
 
 # 📁 مسیر اصلی پروژه
@@ -42,6 +44,7 @@ INSTALLED_APPS = [
     # 🏠 اپلیکیشن‌های محلی پروژه
     'accounts',  # 👥 مدیریت کاربران و نقش‌ها
     'core',      # 🏢 اپلیکیشن اصلی کسب‌وکار
+    'payments',  # 💳 سیستم پرداخت و درگاه‌های ایرانی
 ]
 
 # 🔄 میدل‌ویرهای پردازش درخواست
@@ -136,4 +139,10 @@ AUTH_USER_MODEL = 'accounts.User'
 
 # 🚨 تنظیمات مدیریت خطاها
 HANDLER_404 = 'HomayOMS.views.handler404'
-HANDLER_500 = 'HomayOMS.views.handler500' 
+HANDLER_500 = 'HomayOMS.views.handler500'
+
+# 💳 تنظیمات درگاه‌های پرداخت
+PAYMENT_SANDBOX = PAYMENT_SANDBOX
+ZARINPAL_MERCHANT_ID = ZARINPAL_MERCHANT_ID
+SHAPARAK_TERMINAL_ID = SHAPARAK_TERMINAL_ID
+SHAPARAK_MERCHANT_ID = SHAPARAK_MERCHANT_ID 

@@ -13,6 +13,7 @@ from django.utils import timezone
 from accounts.permissions import check_user_permission, super_admin_permission_required
 from .models import Customer, Product, ActivityLog, Order, OrderItem, WorkingHours
 from accounts.models import User
+from payments.models import Payment
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.decorators.http import require_http_methods
@@ -198,6 +199,11 @@ def orders_list_view(request):
     paginator = Paginator(orders, 25)
     page = request.GET.get('page')
     page_obj = paginator.get_page(page)
+    
+    # 💳 اضافه کردن اطلاعات پرداخت برای هر سفارش
+    for order in page_obj:
+        # دریافت آخرین پرداخت مربوط به این سفارش
+        order.latest_payment = Payment.objects.filter(order=order).order_by('-created_at').first()
     
     context = {
         'title': '📋 مدیریت سفارشات',
@@ -1144,8 +1150,27 @@ def checkout_view(request):
             items_count=order.get_order_items_count()
         )
         
-        messages.success(request, f'🎉 سفارش شما با شماره {order.order_number} ثبت شد')
-        return redirect('core:order_detail', order_id=order.id)
+        # Check if order has cash items - redirect to payment instead of waiting for confirmation
+        cash_items = order.order_items.filter(payment_method='Cash')
+        has_cash_items = cash_items.exists()
+        
+        if has_cash_items:
+            # Calculate cash amount
+            cash_amount = sum(item.total_price for item in cash_items)
+            
+            # Change order status to Confirmed (no manager confirmation needed)
+            order.status = 'Confirmed'
+            order.save()
+            
+            messages.success(request, f'🎉 سفارش شما با شماره {order.order_number} ثبت شد')
+            messages.info(request, f'💰 لطفاً برای پرداخت مبلغ {cash_amount:,.0f} تومان ادامه دهید')
+            
+            # Redirect to payment summary for cash items
+            return redirect('payments:payment_summary', order_id=order.id)
+        else:
+            # No cash items - keep existing behavior 
+            messages.success(request, f'🎉 سفارش شما با شماره {order.order_number} ثبت شد')
+            return redirect('core:order_detail', order_id=order.id)
         
     except Exception as e:
         import traceback
@@ -1525,3 +1550,101 @@ def update_order_status_view(request, order_id):
             'success': False,
             'message': f'خطا در تغییر وضعیت سفارش: {str(e)}'
         })
+
+
+@login_required
+def customer_orders_view(request):
+    """📋 لیست سفارشات مشتری با جزئیات پرداخت"""
+    
+    # فقط کاربران با نقش مشتری می‌توانند دسترسی داشته باشند
+    if request.user.role != User.UserRole.CUSTOMER:
+        messages.error(request, '❌ دسترسی مجاز نیست')
+        return redirect('accounts:dashboard')
+    
+    # 📜 ثبت لاگ مشاهده سفارشات
+    ActivityLog.log_activity(
+        user=request.user,
+        action='VIEW',
+        description='مشاهده لیست سفارشات توسط مشتری',
+        ip_address=get_client_ip(request),
+        user_agent=request.META.get('HTTP_USER_AGENT', ''),
+        severity='LOW'
+    )
+    
+    # دریافت سفارشات مربوط به مشتری فعلی
+    user_name = request.user.get_full_name() or request.user.username
+    user_phone = request.user.phone
+    
+    # جستجوی سفارشات بر اساس نام یا شماره تلفن
+    orders = Order.objects.select_related('customer', 'created_by').prefetch_related('order_items')
+    
+    if user_phone:
+        orders = orders.filter(
+            Q(customer__phone=user_phone) |
+            Q(customer__customer_name__icontains=user_name.strip())
+        )
+    else:
+        orders = orders.filter(customer__customer_name__icontains=user_name.strip())
+    
+    # دریافت پارامترهای فیلتر از URL
+    search_query = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    payment_filter = request.GET.get('payment', '').strip()
+    date_from = request.GET.get('date_from', '').strip()
+    date_to = request.GET.get('date_to', '').strip()
+    
+    # اعمال فیلترها
+    if search_query:
+        orders = orders.filter(
+            Q(order_number__icontains=search_query) |
+            Q(notes__icontains=search_query)
+        )
+    
+    if status_filter:
+        orders = orders.filter(status=status_filter)
+    
+    if payment_filter:
+        orders = orders.filter(payment_method=payment_filter)
+    
+    if date_from:
+        try:
+            from_date = datetime.strptime(date_from, '%Y-%m-%d').date()
+            orders = orders.filter(created_at__date__gte=from_date)
+        except ValueError:
+            pass
+    
+    if date_to:
+        try:
+            to_date = datetime.strptime(date_to, '%Y-%m-%d').date()
+            orders = orders.filter(created_at__date__lte=to_date)
+        except ValueError:
+            pass
+    
+    # مرتب‌سازی
+    orders = orders.order_by('-created_at')
+    
+    # 📄 صفحه‌بندی
+    paginator = Paginator(orders, 10)  # کمتر برای مشتریان
+    page = request.GET.get('page')
+    page_obj = paginator.get_page(page)
+    
+    # 💳 اضافه کردن اطلاعات پرداخت برای هر سفارش
+    for order in page_obj:
+        order.latest_payment = Payment.objects.filter(order=order).order_by('-created_at').first()
+        order.all_payments = Payment.objects.filter(order=order).order_by('-created_at')
+        # Add flag for cash items
+        order.has_cash_items = order.order_items.filter(payment_method='Cash').exists()
+    
+    context = {
+        'title': '📋 سفارشات من',
+        'page_obj': page_obj,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'payment_filter': payment_filter,
+        'date_from': date_from,
+        'date_to': date_to,
+        'status_choices': Order.ORDER_STATUS_CHOICES,
+        'payment_choices': Order.PAYMENT_METHOD_CHOICES,
+        'total_orders': orders.count(),
+    }
+    return render(request, 'core/customer_orders.html', context)
