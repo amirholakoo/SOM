@@ -403,8 +403,12 @@ def activity_logs_view(request):
     action_filter = request.GET.get('action', '')
     severity_filter = request.GET.get('severity', '')
     user_filter = request.GET.get('user', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    search_query = request.GET.get('search', '')
     
-    logs = ActivityLog.objects.select_related('user', 'content_type')
+    # شروع با تمام لاگ‌ها
+    logs = ActivityLog.objects.select_related('user', 'content_type').order_by('-created_at')
     
     # 🔍 اعمال فیلترها
     if action_filter:
@@ -414,32 +418,69 @@ def activity_logs_view(request):
         logs = logs.filter(severity=severity_filter)
     
     if user_filter:
-        logs = logs.filter(user__username__icontains=user_filter)
+        logs = logs.filter(
+            Q(user__username__icontains=user_filter) |
+            Q(user__first_name__icontains=user_filter) |
+            Q(user__last_name__icontains=user_filter)
+        )
+    
+    if date_from:
+        try:
+            from_date = datetime.strptime(date_from, '%Y-%m-%d').date()
+            logs = logs.filter(created_at__date__gte=from_date)
+        except ValueError:
+            pass
+    
+    if date_to:
+        try:
+            to_date = datetime.strptime(date_to, '%Y-%m-%d').date()
+            logs = logs.filter(created_at__date__lte=to_date)
+        except ValueError:
+            pass
+    
+    if search_query:
+        logs = logs.filter(
+            Q(description__icontains=search_query) |
+            Q(user__username__icontains=search_query) |
+            Q(ip_address__icontains=search_query) |
+            Q(user_agent__icontains=search_query)
+        )
     
     # 📊 آمار لاگ‌ها
+    total_logs = logs.count()
+    today_logs = logs.filter(created_at__date=timezone.now().date()).count()
+    
     logs_stats = {
-        'total_count': logs.count(),
-        'action_stats': logs.values('action').annotate(count=Count('id')),
-        'severity_stats': logs.values('severity').annotate(count=Count('id')),
+        'total_count': total_logs,
+        'today_count': today_logs,
+        'action_stats': logs.values('action').annotate(count=Count('id')).order_by('-count')[:10],
+        'severity_stats': logs.values('severity').annotate(count=Count('id')).order_by('-count'),
+        'user_stats': logs.values('user__username').annotate(count=Count('id')).order_by('-count')[:10],
         'daily_stats': logs.extra(
             select={'day': 'date(created_at)'}
-        ).values('day').annotate(count=Count('id'))[:7]
+        ).values('day').annotate(count=Count('id')).order_by('-day')[:7],
+        'recent_actions': logs.values('action', 'description', 'created_at')[:5]
     }
     
     # 📄 صفحه‌بندی
-    paginator = Paginator(logs, 50)
+    paginator = Paginator(logs, 25)  # 25 لاگ در هر صفحه
     page = request.GET.get('page')
-    logs = paginator.get_page(page)
+    logs_page = paginator.get_page(page)
     
     context = {
         'title': '📜 لاگ‌های فعالیت سیستم',
-        'logs': logs,
+        'logs': logs_page,
         'logs_stats': logs_stats,
         'action_filter': action_filter,
         'severity_filter': severity_filter,
         'user_filter': user_filter,
+        'date_from': date_from,
+        'date_to': date_to,
+        'search_query': search_query,
         'action_choices': ActivityLog.ACTION_CHOICES,
         'severity_choices': ActivityLog.SEVERITY_CHOICES,
+        'total_pages': paginator.num_pages,
+        'current_page': logs_page.number,
     }
     return render(request, 'core/activity_logs.html', context)
 
