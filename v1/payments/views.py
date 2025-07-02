@@ -637,11 +637,11 @@ def mock_payment_gateway(request):
                     <input type="hidden" name="csrfmiddlewaretoken" value="{request.META.get('CSRF_COOKIE', '')}">
                     <button type="submit" name="action" value="success" class="btn btn-success">
                         ✅ تایید پرداخت
-                    </button>
+                        </button>
                     <button type="submit" name="action" value="cancel" class="btn btn-danger">
-                        ❌ لغو پرداخت
-                    </button>
-                </form>
+                            ❌ لغو پرداخت
+                        </button>
+                    </form>
                 
                 <div class="countdown" id="countdown">
                     این صفحه به صورت خودکار در 60 ثانیه بسته می‌شود
