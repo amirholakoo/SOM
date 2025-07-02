@@ -1,0 +1,2 @@
+Payment ID,Tracking Code,Order Number,Customer Name,Gateway,Amount (Toman),Status,Logs,Created At
+1,PAY-20250702-NUPSGM,ORD-20250702-1ADR,مشتری تست 1751444021.66902,💎 زرین‌پال,"332,500",🟡 آغاز شده,"2025-07-02 08:13 Payment initiated By system, 2025-07-02 08:13 Gateway: zarinpal By system, 2025-07-02 08:13 Amount: 332,500 Toman By system,",2025-07-02 08:13:42

@@ -67,12 +67,16 @@ def role_required(*allowed_roles):
             if not request.user.is_authenticated:
                 raise PermissionDenied("🔐 برای دسترسی به این صفحه باید وارد شوید")
             
+            # 👑 Super Admin همیشه دسترسی دارد
+            if request.user.is_super_admin():
+                return view_func(request, *args, **kwargs)
+            
             # 🎭 بررسی نقش کاربر
             if request.user.role not in allowed_roles:
                 return render(request, 'accounts/permission_denied.html', {
                     'required_roles': allowed_roles,
                     'user_role': request.user.role,
-                    'message': f'🚫 دسترسی محدود: این صفحه فقط برای {", ".join(allowed_roles)} در دسترس است'
+                    'message': f'🚫 دسترسی محدود: این صفحه فقط برای {", ".join(str(role) for role in allowed_roles)} در دسترس است'
                 }, status=403)
             
             # ✅ بررسی فعال بودن کاربر
