@@ -13,6 +13,7 @@ from django.utils import timezone
 from accounts.permissions import check_user_permission, super_admin_permission_required
 from .models import Customer, Product, ActivityLog, Order, OrderItem, WorkingHours
 from accounts.models import User
+from payments.models import Payment
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.decorators.http import require_http_methods
@@ -26,16 +27,7 @@ import qrcode
 from io import BytesIO
 import base64
 import requests
-
-
-def get_client_ip(request):
-    """🌐 دریافت آدرس IP کلاینت"""
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0]
-    else:
-        ip = request.META.get('REMOTE_ADDR')
-    return ip
+from decimal import Decimal, InvalidOperation
 
 
 def index_view(request):
@@ -52,8 +44,7 @@ def index_view(request):
             severity='LOW'
         )
     
-    # 💰 دریافت اطلاعات قیمت و موجودی (در آینده از مدل Product)
-    # فعلاً از داده‌های استاتیک استفاده می‌کنیم
+    # 💰 دریافت اطلاعات قیمت و موجودی از مدل Product
     price_data = {
         'cash': {
             'price': 2500000,  # قیمت نقدی
@@ -65,28 +56,35 @@ def index_view(request):
         }
     }
     
-    # در آینده می‌توانید این داده‌ها را از مدل Product دریافت کنید:
-    # try:
-    #     cash_product = Product.objects.filter(payment_type='cash', status='In-stock').first()
-    #     credit_product = Product.objects.filter(payment_type='credit', status='In-stock').first()
-    #     
-    #     if cash_product:
-    #         price_data['cash']['price'] = cash_product.price
-    #         price_data['cash']['stock'] = cash_product.quantity
-    #     
-    #     if credit_product:
-    #         price_data['credit']['price'] = credit_product.price
-    #         price_data['credit']['stock'] = credit_product.quantity
-    # except:
-    #     pass  # از داده‌های پیش‌فرض استفاده می‌کند
+    # دریافت محصولات از مدل
+    products = Product.objects.filter(status='In-stock').order_by('-created_at')[:20]
+    
+    # اگر محصولاتی وجود دارد، قیمت را بروزرسانی کن
+    if products:
+        # استفاده از قیمت اولین محصول به عنوان قیمت پایه
+        first_product = products.first()
+        if first_product:
+            price_data['cash']['price'] = first_product.price
+            price_data['credit']['price'] = first_product.price
     
     context = {
         'title': 'کارخانه کاغذ و مقوای همایون',
         'price_data': price_data,
+        'products': products,
         'user': request.user,
     }
     
     return render(request, 'index.html', context)
+
+
+def get_client_ip(request):
+    """🌐 دریافت آدرس IP کلاینت"""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
 
 
 @login_required
@@ -165,12 +163,11 @@ def finance_dashboard_view(request):
     }
     return render(request, 'core/finance_dashboard.html', context)
 
-
 @login_required
 @super_admin_permission_required('manage_inventory')
 def inventory_list_view(request):
-    """📦 لیست موجودی"""
-    
+    """📦 صفحه مدیریت موجودی با آمار کامل"""
+
     # 📜 ثبت لاگ مشاهده موجودی
     ActivityLog.log_activity(
         user=request.user,
@@ -180,8 +177,34 @@ def inventory_list_view(request):
         user_agent=request.META.get('HTTP_USER_AGENT', ''),
         severity='LOW'
     )
-    
-    context = {'title': '📦 مدیریت موجودی'}
+
+    # 🧮 آمار محصولات
+    products = Product.objects.all()
+
+    total_items = products.count()
+    in_stock = products.filter(status='In-stock').count()
+    pre_order = products.filter(status='Pre-order').count()
+    sold = products.filter(status='Sold').count()
+
+    low_stock = products.filter(status='In-stock', length__lte=200).count()  # طول کمتر از ۲۰۰ متر
+    warehouse_count = products.values('location').distinct().count()
+
+    stats = {
+        'total_items': total_items,
+        'in_stock': in_stock,
+        'low_stock': low_stock,
+        'sold_out': sold,
+        'pre_order': pre_order,
+        'capacity_percent': int((in_stock / total_items) * 100) if total_items else 0,
+        'warehouse_count': warehouse_count
+    }
+
+    # 🖥️ نمایش در قالب
+    context = {
+        'title': '📦 مدیریت موجودی',
+        'inventory_stats': stats
+    }
+
     return render(request, 'core/inventory_list.html', context)
 
 
@@ -249,6 +272,11 @@ def orders_list_view(request):
     paginator = Paginator(orders, 25)
     page = request.GET.get('page')
     page_obj = paginator.get_page(page)
+    
+    # 💳 اضافه کردن اطلاعات پرداخت برای هر سفارش
+    for order in page_obj:
+        # دریافت آخرین پرداخت مربوط به این سفارش
+        order.latest_payment = Payment.objects.filter(order=order).order_by('-created_at').first()
     
     context = {
         'title': '📋 مدیریت سفارشات',
@@ -454,8 +482,12 @@ def activity_logs_view(request):
     action_filter = request.GET.get('action', '')
     severity_filter = request.GET.get('severity', '')
     user_filter = request.GET.get('user', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    search_query = request.GET.get('search', '')
     
-    logs = ActivityLog.objects.select_related('user', 'content_type')
+    # شروع با تمام لاگ‌ها
+    logs = ActivityLog.objects.select_related('user', 'content_type').order_by('-created_at')
     
     # 🔍 اعمال فیلترها
     if action_filter:
@@ -465,32 +497,69 @@ def activity_logs_view(request):
         logs = logs.filter(severity=severity_filter)
     
     if user_filter:
-        logs = logs.filter(user__username__icontains=user_filter)
+        logs = logs.filter(
+            Q(user__username__icontains=user_filter) |
+            Q(user__first_name__icontains=user_filter) |
+            Q(user__last_name__icontains=user_filter)
+        )
+    
+    if date_from:
+        try:
+            from_date = datetime.strptime(date_from, '%Y-%m-%d').date()
+            logs = logs.filter(created_at__date__gte=from_date)
+        except ValueError:
+            pass
+    
+    if date_to:
+        try:
+            to_date = datetime.strptime(date_to, '%Y-%m-%d').date()
+            logs = logs.filter(created_at__date__lte=to_date)
+        except ValueError:
+            pass
+    
+    if search_query:
+        logs = logs.filter(
+            Q(description__icontains=search_query) |
+            Q(user__username__icontains=search_query) |
+            Q(ip_address__icontains=search_query) |
+            Q(user_agent__icontains=search_query)
+        )
     
     # 📊 آمار لاگ‌ها
+    total_logs = logs.count()
+    today_logs = logs.filter(created_at__date=timezone.now().date()).count()
+    
     logs_stats = {
-        'total_count': logs.count(),
-        'action_stats': logs.values('action').annotate(count=Count('id')),
-        'severity_stats': logs.values('severity').annotate(count=Count('id')),
+        'total_count': total_logs,
+        'today_count': today_logs,
+        'action_stats': logs.values('action').annotate(count=Count('id')).order_by('-count')[:10],
+        'severity_stats': logs.values('severity').annotate(count=Count('id')).order_by('-count'),
+        'user_stats': logs.values('user__username').annotate(count=Count('id')).order_by('-count')[:10],
         'daily_stats': logs.extra(
             select={'day': 'date(created_at)'}
-        ).values('day').annotate(count=Count('id'))[:7]
+        ).values('day').annotate(count=Count('id')).order_by('-day')[:7],
+        'recent_actions': logs.values('action', 'description', 'created_at')[:5]
     }
     
     # 📄 صفحه‌بندی
-    paginator = Paginator(logs, 50)
+    paginator = Paginator(logs, 25)  # 25 لاگ در هر صفحه
     page = request.GET.get('page')
-    logs = paginator.get_page(page)
+    logs_page = paginator.get_page(page)
     
     context = {
         'title': '📜 لاگ‌های فعالیت سیستم',
-        'logs': logs,
+        'logs': logs_page,
         'logs_stats': logs_stats,
         'action_filter': action_filter,
         'severity_filter': severity_filter,
         'user_filter': user_filter,
+        'date_from': date_from,
+        'date_to': date_to,
+        'search_query': search_query,
         'action_choices': ActivityLog.ACTION_CHOICES,
         'severity_choices': ActivityLog.SEVERITY_CHOICES,
+        'total_pages': paginator.num_pages,
+        'current_page': logs_page.number,
     }
     return render(request, 'core/activity_logs.html', context)
 
@@ -852,79 +921,81 @@ def check_working_hours_middleware(view_func):
     
     return wrapper
 
-
-# اعمال میدل‌ویر ساعات کاری به صفحات مشتری
 @check_working_hours_middleware
 def products_landing_view(request):
-    """🛍️ صفحه اصلی محصولات"""
-    
+    """🛍️ صفحه اصلی محصولات - تفکیک نقدی و نسیه"""
+
     # فقط محصولات موجود در انبار
-    available_products = Product.objects.filter(status='In-stock').order_by('-created_at')
-    
+    all_available = Product.objects.filter(status='In-stock').order_by('-created_at')
+
     # فیلترهای جستجو
     search_query = request.GET.get('search', '')
     location_filter = request.GET.get('location', '')
     min_price = request.GET.get('min_price', '')
     max_price = request.GET.get('max_price', '')
-    
-    # اعمال فیلترها
+
     if search_query:
-        available_products = available_products.filter(
+        all_available = all_available.filter(
             Q(reel_number__icontains=search_query) |
             Q(grade__icontains=search_query)
         )
-    
+
     if location_filter:
-        available_products = available_products.filter(location=location_filter)
-    
+        all_available = all_available.filter(location=location_filter)
+
     if min_price:
         try:
-            available_products = available_products.filter(price__gte=float(min_price))
+            all_available = all_available.filter(price__gte=float(min_price))
         except ValueError:
             pass
-    
+
     if max_price:
         try:
-            available_products = available_products.filter(price__lte=float(max_price))
+            all_available = all_available.filter(price__lte=float(max_price))
         except ValueError:
             pass
-    
-    # آمار کلی
+
+    # جدا کردن نقدی و نسیه
+    cash_products = all_available.filter(sale_type='cash')
+    credit_products = all_available.filter(sale_type='credit')
+
+
     stats = {
-        'total_products': available_products.count(),
-        'in_stock_count': available_products.count(),
-        'avg_price': available_products.aggregate(Avg('price'))['price__avg'] or 0,
+        'total_products': all_available.count(),
+        'in_stock_count': all_available.count(),
+        'avg_price': all_available.aggregate(Avg('price'))['price__avg'] or 0,
         'warehouses_count': len(Product.LOCATION_CHOICES),
         'locations': Product.LOCATION_CHOICES,
     }
-    
-    # ثبت لاگ بازدید
+
     if request.user.is_authenticated:
         ActivityLog.log_activity(
             user=request.user,
             action='VIEW',
-            description=f'مشاهده صفحه محصولات - {available_products.count()} محصول',
+            description=f'مشاهده صفحه محصولات - {all_available.count()} محصول',
             severity='LOW',
             ip_address=get_client_ip(request),
             user_agent=request.META.get('HTTP_USER_AGENT'),
             page='products_landing',
-            products_count=available_products.count(),
+            products_count=all_available.count(),
             filters_applied={
                 'search': search_query,
                 'location': location_filter,
                 'price_range': f"{min_price}-{max_price}"
             }
         )
-    
+
     context = {
-        'products': available_products,
+        'cash_products': cash_products,
+        'credit_products': credit_products,
         'stats': stats,
         'search_query': search_query,
         'location_filter': location_filter,
         'min_price': min_price,
         'max_price': max_price,
+        
     }
-    
+
     return render(request, 'core/products_landing.html', context)
 
 
@@ -1035,8 +1106,16 @@ def cart_view(request):
     
     # بررسی وجود پروفایل مشتری
     try:
-        customer = Customer.objects.get(customer_name=request.user.get_full_name())
-    except Customer.DoesNotExist:
+        # استفاده از first() به جای get() برای جلوگیری از MultipleObjectsReturned
+        customer = Customer.objects.filter(
+            customer_name=request.user.get_full_name() or request.user.username
+        ).first()
+        
+        # اگر مشتری پیدا نشد، سعی کن با شماره تلفن پیدا کن
+        if not customer and request.user.phone:
+            customer = Customer.objects.filter(phone=request.user.phone).first()
+            
+    except Exception as e:
         customer = None
     
     context = {
@@ -1062,19 +1141,48 @@ def checkout_view(request):
         return redirect('core:products_landing')
     
     try:
-        # پیدا کردن یا ایجاد پروفایل مشتری
-        customer, created = Customer.objects.get_or_create(
-            customer_name=request.user.get_full_name(),
-            defaults={
-                'phone': request.user.phone,
-                'status': 'Active'
-            }
-        )
+        # پیدا کردن یا ایجاد پروفایل مشتری با استفاده از نام و شماره تلفن
+        customer_name = request.user.get_full_name() or request.user.username
+        customer_phone = request.user.phone
         
-        # ایجاد سفارش - استفاده از پیش‌فرض "Mixed" برای سفارشات با چند نوع پرداخت
+        # ابتدا سعی کن با نام و شماره تلفن پیدا کن
+        if customer_phone:
+            customer = Customer.objects.filter(
+                customer_name=customer_name,
+                phone=customer_phone
+            ).first()
+        else:
+            # اگر شماره تلفن نبود، فقط با نام پیدا کن
+            customer = Customer.objects.filter(customer_name=customer_name).first()
+        
+        # اگر مشتری پیدا نشد، ایجاد کن
+        if not customer:
+            try:
+                customer = Customer.objects.create(
+                    customer_name=customer_name,
+                    phone=customer_phone or '',
+                    status='Active',
+                    comments=f'🔵 پروفایل خودکار ایجاد شده برای کاربر: {request.user.username}'
+                )
+            except Exception as e:
+                # اگر خطای unique constraint رخ داد، سعی کن مشتری موجود را پیدا کن
+                if 'UNIQUE constraint failed' in str(e):
+                    customer = Customer.objects.filter(customer_name=customer_name).first()
+                    if not customer:
+                        raise e
+                else:
+                    raise e
+        
+        # محاسبه مبلغ کل سفارش
+        total_amount = 0
+        for cart_key, item in cart.items():
+            total_amount += item['quantity'] * item['unit_price']
+        
+        # ایجاد سفارش
         order = Order.objects.create(
             customer=customer,
             payment_method='Cash',  # پیش‌فرض - حالا در OrderItem نوع واقعی ذخیره می‌شود
+            total_amount=total_amount,  # تنظیم مبلغ کل
             notes=request.POST.get('notes', ''),
             delivery_address=request.POST.get('delivery_address', ''),
             created_by=request.user
@@ -1101,6 +1209,7 @@ def checkout_view(request):
         
         # پاک کردن سبد خرید
         request.session['cart'] = {}
+        request.session.save()  # اطمینان از ذخیره session
         
         # ثبت لاگ
         ActivityLog.log_activity(
@@ -1116,11 +1225,33 @@ def checkout_view(request):
             items_count=order.get_order_items_count()
         )
         
-        messages.success(request, f'🎉 سفارش شما با شماره {order.order_number} ثبت شد')
-        return redirect('core:order_detail', order_id=order.id)
+        # Check if order has cash items - redirect to payment instead of waiting for confirmation
+        cash_items = order.order_items.filter(payment_method='Cash')
+        has_cash_items = cash_items.exists()
+        
+        if has_cash_items:
+            # Calculate cash amount
+            cash_amount = sum(item.total_price for item in cash_items)
+            
+            # Change order status to Confirmed (no manager confirmation needed)
+            order.status = 'Confirmed'
+            order.save()
+            
+            messages.success(request, f'🎉 سفارش شما با شماره {order.order_number} ثبت شد')
+            messages.info(request, f'💰 لطفاً برای پرداخت مبلغ {cash_amount:,.0f} تومان ادامه دهید')
+            
+            # Redirect to payment summary for cash items
+            return redirect('payments:payment_summary', order_id=order.id)
+        else:
+            # No cash items - keep existing behavior 
+            messages.success(request, f'🎉 سفارش شما با شماره {order.order_number} ثبت شد')
+            return redirect('core:order_detail', order_id=order.id)
         
     except Exception as e:
-        messages.error(request, '❌ خطا در ثبت سفارش. لطفاً مجدداً تلاش کنید')
+        import traceback
+        print(f"❌ خطا در checkout_view: {e}")
+        print(f"📋 Traceback: {traceback.format_exc()}")
+        messages.error(request, f'❌ خطا در ثبت سفارش: {str(e)}')
         return redirect('core:cart')
 
 
@@ -1136,9 +1267,13 @@ def order_detail_view(request, order_id):
         # بررسی دسترسی
         if request.user.role == User.UserRole.CUSTOMER:
             # مشتریان فقط سفارشات خودشان را ببینند
-            if order.customer.customer_name != request.user.get_full_name():
-                messages.error(request, '❌ شما اجازه مشاهده این سفارش را ندارید')
-                return redirect('accounts:customer_dashboard')
+            # استفاده از نام کاربری یا نام کامل برای مقایسه
+            user_identifier = request.user.get_full_name() or request.user.username
+            if order.customer.customer_name != user_identifier:
+                # اگر نام مطابقت نداشت، سعی کن با شماره تلفن چک کن
+                if order.customer.phone != request.user.phone:
+                    messages.error(request, '❌ شما اجازه مشاهده این سفارش را ندارید')
+                    return redirect('accounts:customer_dashboard')
         
         # ثبت لاگ مشاهده
         ActivityLog.log_activity(
@@ -1490,3 +1625,303 @@ def update_order_status_view(request, order_id):
             'success': False,
             'message': f'خطا در تغییر وضعیت سفارش: {str(e)}'
         })
+
+
+@login_required
+def customer_orders_view(request):
+    """📋 لیست سفارشات مشتری با جزئیات پرداخت"""
+    
+    # فقط کاربران با نقش مشتری می‌توانند دسترسی داشته باشند
+    if request.user.role != User.UserRole.CUSTOMER:
+        messages.error(request, '❌ دسترسی مجاز نیست')
+        return redirect('accounts:dashboard')
+    
+    # 📜 ثبت لاگ مشاهده سفارشات
+    ActivityLog.log_activity(
+        user=request.user,
+        action='VIEW',
+        description='مشاهده لیست سفارشات توسط مشتری',
+        ip_address=get_client_ip(request),
+        user_agent=request.META.get('HTTP_USER_AGENT', ''),
+        severity='LOW'
+    )
+    
+    # دریافت سفارشات مربوط به مشتری فعلی
+    user_name = request.user.get_full_name() or request.user.username
+    user_phone = request.user.phone
+    
+    # جستجوی سفارشات بر اساس نام یا شماره تلفن
+    orders = Order.objects.select_related('customer', 'created_by').prefetch_related('order_items')
+    
+    if user_phone:
+        orders = orders.filter(
+            Q(customer__phone=user_phone) |
+            Q(customer__customer_name__icontains=user_name.strip())
+        )
+    else:
+        orders = orders.filter(customer__customer_name__icontains=user_name.strip())
+    
+    # دریافت پارامترهای فیلتر از URL
+    search_query = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    payment_filter = request.GET.get('payment', '').strip()
+    date_from = request.GET.get('date_from', '').strip()
+    date_to = request.GET.get('date_to', '').strip()
+    
+    # اعمال فیلترها
+    if search_query:
+        orders = orders.filter(
+            Q(order_number__icontains=search_query) |
+            Q(notes__icontains=search_query)
+        )
+    
+    if status_filter:
+        orders = orders.filter(status=status_filter)
+    
+    if payment_filter:
+        orders = orders.filter(payment_method=payment_filter)
+    
+    if date_from:
+        try:
+            from_date = datetime.strptime(date_from, '%Y-%m-%d').date()
+            orders = orders.filter(created_at__date__gte=from_date)
+        except ValueError:
+            pass
+    
+    if date_to:
+        try:
+            to_date = datetime.strptime(date_to, '%Y-%m-%d').date()
+            orders = orders.filter(created_at__date__lte=to_date)
+        except ValueError:
+            pass
+    
+    # مرتب‌سازی
+    orders = orders.order_by('-created_at')
+    
+    # 📄 صفحه‌بندی
+    paginator = Paginator(orders, 10)  # کمتر برای مشتریان
+    page = request.GET.get('page')
+    page_obj = paginator.get_page(page)
+    
+    # 💳 اضافه کردن اطلاعات پرداخت برای هر سفارش
+    for order in page_obj:
+        order.latest_payment = Payment.objects.filter(order=order).order_by('-created_at').first()
+        order.all_payments = Payment.objects.filter(order=order).order_by('-created_at')
+        # Add flag for cash items
+        order.has_cash_items = order.order_items.filter(payment_method='Cash').exists()
+    
+    context = {
+        'title': '📋 سفارشات من',
+        'page_obj': page_obj,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'payment_filter': payment_filter,
+        'date_from': date_from,
+        'date_to': date_to,
+        'status_choices': Order.ORDER_STATUS_CHOICES,
+        'payment_choices': Order.PAYMENT_METHOD_CHOICES,
+        'total_orders': orders.count(),
+    }
+    return render(request, 'core/customer_orders.html', context)
+
+
+def safe_decimal(val):
+    try:
+        # اگر val None یا خالی بود 0 می‌گذاریم
+        if val in (None, ''):
+            return Decimal('0')
+        return Decimal(str(val))
+    except (InvalidOperation, ValueError):
+        return Decimal('0')
+
+@login_required
+@check_user_permission('is_super_admin')
+@require_http_methods(["POST"])
+def create_product_api(request):
+    try:
+        data = json.loads(request.body)
+        
+        required_fields = ['reel_number', 'location', 'width', 'gsm', 'length', 'grade']
+        for field in required_fields:
+            if not data.get(field):
+                return JsonResponse({
+                    'success': False,
+                    'error': f'فیلد {field} اجباری است'
+                }, status=400)
+
+        # تبدیل ایمن به int و decimal
+        def safe_int(val):
+            try:
+                return int(val)
+            except (TypeError, ValueError):
+                return 0
+
+        price = safe_decimal(data.get('price', 0))
+        breaks = safe_int(data.get('breaks', 0))
+        
+        if Product.objects.filter(reel_number=data['reel_number']).exists():
+            return JsonResponse({
+                'success': False,
+                'error': 'محصولی با این شماره ریل قبلاً ثبت شده است'
+            }, status=400)
+
+        product = Product.objects.create(
+            reel_number=data['reel_number'],
+            location=data['location'],
+            width=safe_int(data.get('width')),
+            gsm=safe_int(data.get('gsm')),
+            length=safe_int(data.get('length')),
+            grade=data['grade'],
+            breaks=breaks,
+            price=price,
+            status='In-stock',
+            price_updated_by=request.user
+        )
+        
+        ActivityLog.log_activity(
+            user=request.user,
+            action='CREATE',
+            description=f'محصول جدید با شماره ریل {product.reel_number} ایجاد شد',
+            content_object=product,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', ''),
+            severity='LOW'
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'محصول با موفقیت ایجاد شد',
+            'product': {
+                'id': product.id,
+                'reel_number': product.reel_number,
+                'location': product.get_location_display(),
+                'price': str(product.price),  # تبدیل Decimal به رشته برای json
+                'status': product.get_status_display()
+            }
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'فرمت داده‌های ارسالی نامعتبر است'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'خطا در ایجاد محصول: {str(e)}'
+        }, status=500)
+
+@login_required
+@check_user_permission('is_super_admin')
+@require_http_methods(["POST"])
+def create_customer_api(request):
+    """👤 API ایجاد مشتری جدید - فقط Super Admin"""
+    try:
+        # دریافت داده‌های ارسالی
+        data = json.loads(request.body)
+        
+        # اعتبارسنجی فیلدهای اجباری
+        if not data.get('customer_name'):
+            return JsonResponse({
+                'success': False,
+                'error': 'نام مشتری اجباری است'
+            }, status=400)
+        
+        # بررسی تکراری نبودن نام مشتری
+        if Customer.objects.filter(customer_name=data['customer_name']).exists():
+            return JsonResponse({
+                'success': False,
+                'error': 'مشتری با این نام قبلاً ثبت شده است'
+            }, status=400)
+        
+        # ایجاد مشتری جدید
+        customer = Customer.objects.create(
+            customer_name=data['customer_name'],
+            phone=data.get('phone', ''),
+            address=data.get('address', ''),
+            comments=data.get('comments', ''),
+            economic_code=data.get('economic_code', ''),
+            postcode=data.get('postcode', ''),
+            national_id=data.get('national_id', ''),
+            status='Active'
+        )
+        
+        # ثبت لاگ
+        ActivityLog.log_activity(
+            user=request.user,
+            action='CREATE',
+            description=f'مشتری جدید {customer.customer_name} ایجاد شد',
+            content_object=customer,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', ''),
+            severity='LOW'
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'مشتری با موفقیت ایجاد شد',
+            'customer': {
+                'id': customer.id,
+                'customer_name': customer.customer_name,
+                'phone': customer.phone,
+                'status': customer.get_status_display()
+            }
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'فرمت داده‌های ارسالی نامعتبر است'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'خطا در ایجاد مشتری: {str(e)}'
+        }, status=500)
+
+
+# from django.db.models import Count
+# from django.shortcuts import render
+# from .models import Product
+
+# @login_required
+# def currentinventory_dashboard(request):
+#     products = Product.objects.all()
+    
+#     total_items = products.count()
+#     in_stock = products.filter(status='In-stock').count()
+#     pre_order = products.filter(status='Pre-order').count()
+#     sold = products.filter(status='Sold').count()
+    
+#     low_stock = products.filter(status='In-stock').filter(length__lte=200).count()  # مثلاً طول کمتر از ۲۰۰ متر
+    
+#     warehouse_count = Product.objects.values('location').distinct().count()
+
+#     stats = {
+#         'total_items': total_items,
+#         'in_stock': in_stock,
+#         'low_stock': low_stock,
+#         'sold_out': sold,
+#         'capacity_percent': int((in_stock / total_items) * 100) if total_items else 0,
+#         'warehouse_count': warehouse_count
+#     }
+
+#     return render(request, 'core/inventory_list.html', {
+#         'inventory_stats': stats,
+#     })
+
+from django.shortcuts import render, get_object_or_404
+from .models import Customer  # اگر مدل جداگانه‌ای برای مشتری داری
+
+
+def customer_detail_view(request, customer_id):
+    customer = get_object_or_404(Customer, id=customer_id)
+    return render(request, 'core/customers/detail.html', {'customer': customer})
+
+def customer_edit_view(request, customer_id):
+    customer = get_object_or_404(Customer, id=customer_id)
+    return render(request, 'core/customers/edit.html', {'customer': customer})
+
+def customer_orders_view(request, customer_id):
+    customer = get_object_or_404(Customer, id=customer_id)
+    orders = customer.orders.all()  # فرض: رابطه `related_name='orders'`
+    return render(request, 'core/customers/orders.html', {'customer': customer, 'orders': orders})

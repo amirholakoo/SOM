@@ -10,9 +10,6 @@ from . import views
 app_name = 'core'
 
 urlpatterns = [
-    
-    path('', views.index_view, name='products_landing'),
-    
     # 📊 داشبوردهای مخصوص هر نقش
     path('admin-dashboard/', views.admin_dashboard_view, name='admin_dashboard'),
     path('finance-dashboard/', views.finance_dashboard_view, name='finance_dashboard'),
@@ -22,6 +19,7 @@ urlpatterns = [
     
     # 📋 مدیریت سفارشات
     path('orders/', views.orders_list_view, name='orders_list'),
+    path('my-orders/', views.customer_orders_view, name='customer_orders'),
     path('orders/<int:order_id>/confirm/', views.confirm_order_view, name='confirm_order'),
     path('orders/<int:order_id>/cancel/', views.cancel_order_view, name='cancel_order'),
     path('orders/<int:order_id>/update-status/', views.update_order_status_view, name='update_order_status'),
@@ -39,6 +37,8 @@ urlpatterns = [
     # 📜 مدیریت لاگ‌های فعالیت
     path('activity-logs/', views.activity_logs_view, name='activity_logs'),
     
+    # 🏠 Main landing page
+    path('', views.products_landing_view, name='products_landing'),
     
     # 🛒 Shopping cart and orders
     path('cart/', views.cart_view, name='cart'),
@@ -53,8 +53,17 @@ urlpatterns = [
     path('api/dashboard-stats/', views.dashboard_stats_api, name='dashboard_stats_api'),
     path('api/product-qr/<str:qr_code>/', views.product_qr_api, name='product_qr_api'),
     path('api/update-price/', views.update_price_api, name='update_price_api'),
+    path('api/create-product/', views.create_product_api, name='create_product_api'),
+    path('api/create-customer/', views.create_customer_api, name='create_customer_api'),
     
     # ⏰ مدیریت ساعات کاری - فقط Super Admin
     path('working-hours/', views.working_hours_management_view, name='working_hours_management'),
     path('api/set-working-hours/', views.set_working_hours_view, name='set_working_hours'),
+    
+    # path('inventory/', views.currentinventory_dashboard, name='currentinventory_dashboard'),
+
+    # path('customers/<int:customer_id>/', views.user_detail_view, name='customer_detail'),
+    # path('customers/<int:customer_id>/edit/', views.user_edit_view, name='customer_edit'),
+    # path('customers/<int:customer_id>/orders/', views.user_orders_view, name='customer_orders_by_id'),
+    
 ] 
