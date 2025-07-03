@@ -15,7 +15,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from config import (
     SECRET_KEY, DEBUG, ALLOWED_HOSTS, 
     STATIC_URL, STATIC_ROOT, STATICFILES_DIRS,
-    MEDIA_URL, MEDIA_ROOT, CORS_ALLOWED_ORIGINS
+    MEDIA_URL, MEDIA_ROOT, CORS_ALLOWED_ORIGINS,
+    PAYMENT_SANDBOX, ZARINPAL_MERCHANT_ID, 
+    SHAPARAK_TERMINAL_ID, SHAPARAK_MERCHANT_ID
 )
 
 # 📁 مسیر اصلی پروژه
@@ -28,6 +30,9 @@ ALLOWED_HOSTS = ALLOWED_HOSTS  # هاست‌های مجاز
 
 # 📦 تعریف اپلیکیشن‌های نصب شده
 INSTALLED_APPS = [
+    # 🏠 اپلیکیشن‌های محلی پروژه (قبل از Django apps برای override کردن commands)
+    'accounts',  # 👥 مدیریت کاربران و نقش‌ها - FIRST to override createsuperuser
+    
     # 🎛️ اپلیکیشن‌های پیش‌فرض جنگو
     'django.contrib.admin',        # پنل مدیریت
     'django.contrib.auth',         # سیستم احراز هویت
@@ -39,9 +44,9 @@ INSTALLED_APPS = [
     # 🔗 اپلیکیشن‌های شخص ثالث
     'corsheaders',  # مدیریت CORS
     
-    # 🏠 اپلیکیشن‌های محلی پروژه
-    'accounts',  # 👥 مدیریت کاربران و نقش‌ها
+    # 🏠 اپلیکیشن‌های محلی پروژه (ادامه)
     'core',      # 🏢 اپلیکیشن اصلی کسب‌وکار
+    'payments',  # 💳 سیستم پرداخت و درگاه‌های ایرانی
 ]
 
 # 🔄 میدل‌ویرهای پردازش درخواست
@@ -54,6 +59,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',  # 👤 احراز هویت
     'django.contrib.messages.middleware.MessageMiddleware',  # 💬 پیام‌ها
     'django.middleware.clickjacking.XFrameOptionsMiddleware',  # 🚫 محافظت Clickjacking
+    'core.middleware.CurrentUserMiddleware',           # 🔍 ردیابی کاربر فعلی برای لاگ‌ها
 ]
 
 # 🌐 URL اصلی پروژه
@@ -135,4 +141,10 @@ AUTH_USER_MODEL = 'accounts.User'
 
 # 🚨 تنظیمات مدیریت خطاها
 HANDLER_404 = 'HomayOMS.views.handler404'
-HANDLER_500 = 'HomayOMS.views.handler500' 
+HANDLER_500 = 'HomayOMS.views.handler500'
+
+# 💳 تنظیمات درگاه‌های پرداخت
+PAYMENT_SANDBOX = PAYMENT_SANDBOX
+ZARINPAL_MERCHANT_ID = ZARINPAL_MERCHANT_ID
+SHAPARAK_TERMINAL_ID = SHAPARAK_TERMINAL_ID
+SHAPARAK_MERCHANT_ID = SHAPARAK_MERCHANT_ID 

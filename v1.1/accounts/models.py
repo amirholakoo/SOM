@@ -8,6 +8,7 @@ from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.db import models
 from django.core.exceptions import ValidationError
 from HomayOMS.baseModel import BaseModel
+from core.middleware import get_current_user
 
 
 class User(AbstractUser, BaseModel):
@@ -160,10 +161,32 @@ class User(AbstractUser, BaseModel):
     
     def save(self, *args, **kwargs):
         """
-        💾 ذخیره کاربر با تنظیم خودکار گروه‌ها و ایجاد Customer
+        💾 ذخیره کاربر با تنظیم خودکار گروه‌ها و ایجاد Customer و لاگ کردن تغییرات
         """
+        from core.models import ActivityLog
+        
+        # بررسی اینکه آیا این یک کاربر جدید است یا ویرایش
         is_new_user = not self.pk
         is_new_customer = False
+        
+        # اگر کاربر جدید نیست، اطلاعات قبلی را ذخیره کن
+        if not is_new_user:
+            try:
+                old_user = User.objects.get(pk=self.pk)
+                old_role = old_user.role
+                old_status = old_user.status
+                old_phone = old_user.phone
+                old_username = old_user.username
+            except User.DoesNotExist:
+                old_role = None
+                old_status = None
+                old_phone = None
+                old_username = None
+        else:
+            old_role = None
+            old_status = None
+            old_phone = None
+            old_username = None
         
         # 🔐 اگر رمز عبور تغییر کرده، تاریخ انقضا را بازنشانی کن
         if self.pk:
@@ -189,6 +212,68 @@ class User(AbstractUser, BaseModel):
         # 🔵 ایجاد خودکار Customer object برای کاربران Customer
         if is_new_customer:
             self._create_customer_profile()
+        
+        # دریافت کاربر فعلی
+        current_user = get_current_user()
+        
+        # لاگ کردن عملیات فقط اگر کاربر معتبر باشد
+        if current_user and hasattr(current_user, 'is_authenticated') and current_user.is_authenticated:
+            if is_new_user:
+                # کاربر جدید ایجاد شد
+                ActivityLog.log_activity(
+                    user=current_user,
+                    action='CREATE',
+                    description=f'👤 کاربر جدید ایجاد شد: {self.username} - نقش: {self.get_role_display()} - تلفن: {self.phone}',
+                    content_object=self,
+                    severity='HIGH',
+                    extra_data={
+                        'user_id': self.id,
+                        'username': self.username,
+                        'role': self.role,
+                        'status': self.status,
+                        'phone': self.phone,
+                        'email': self.email,
+                        'full_name': self.get_full_name()
+                    }
+                )
+            else:
+                # کاربر ویرایش شد - بررسی تغییرات مهم
+                changes = []
+                
+                if old_role != self.role:
+                    changes.append(f'🎭 نقش: {old_role} → {self.role}')
+                
+                if old_status != self.status:
+                    changes.append(f'📊 وضعیت: {old_status} → {self.status}')
+                
+                if old_phone != self.phone:
+                    changes.append(f'📞 تلفن: {old_phone} → {self.phone}')
+                
+                if old_username != self.username:
+                    changes.append(f'👤 نام کاربری: {old_username} → {self.username}')
+                
+                # اگر تغییرات مهمی وجود دارد، لاگ کن
+                if changes:
+                    ActivityLog.log_activity(
+                        user=current_user,
+                        action='UPDATE',
+                        description=f'📝 کاربر ویرایش شد: {self.username} - تغییرات: {", ".join(changes)}',
+                        content_object=self,
+                        severity='HIGH',
+                        extra_data={
+                            'user_id': self.id,
+                            'username': self.username,
+                            'changes': changes,
+                            'old_role': old_role,
+                            'new_role': self.role,
+                            'old_status': old_status,
+                            'new_status': self.status,
+                            'old_phone': old_phone,
+                            'new_phone': self.phone,
+                            'old_username': old_username,
+                            'new_username': self.username
+                        }
+                    )
     
     def _assign_user_group(self):
         """
@@ -263,7 +348,7 @@ class User(AbstractUser, BaseModel):
                 customer_name=self.get_full_name() or self.username,
                 phone=self.phone if self.phone else '',
                 address='',  # آدرس خالی - کاربر بعداً پر می‌کند
-                comments=f'🔵 پروفایل خودکار ایجاد شده برای کاربر: {self.username}',
+                comments=f'�� پروفایل خودکار ایجاد شده برای کاربر: {self.username}',
                 status='Active',
                 # اطلاعات قانونی خالی - کاربر در صورت نیاز پر می‌کند
                 economic_code='',

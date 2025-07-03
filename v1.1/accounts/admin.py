@@ -214,14 +214,7 @@ class UserAdmin(BaseUserAdmin):
         self.message_user(request, f'🔐 تاریخ انقضای رمز عبور {updated} کاربر بازنشانی شد.')
     reset_password_expiry.short_description = "🔐 بازنشانی انقضای رمز عبور"
     
-    def send_welcome_email(self, request, queryset):
-        """
-        📧 ارسال ایمیل خوش‌آمدگویی
-        """
-        # پیاده‌سازی در آینده
-        self.message_user(request, f'📧 ایمیل خوش‌آمدگویی برای {queryset.count()} کاربر ارسال شد.')
-    send_welcome_email.short_description = "📧 ارسال ایمیل خوش‌آمدگویی"
-    
+
     def has_add_permission(self, request):
         """➕ مجوز اضافه کردن کاربر"""
         return request.user.is_superuser or (hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()) or request.user.has_perm('accounts.add_user')
