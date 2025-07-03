@@ -107,36 +107,16 @@
     </div>
 
     <!-- عملیات -->
-    <div class="row dashboard-actions g-4 mb-4">
-        <div class="col-12 col-md-4">
-            <div class="card dashboard-card h-100">
-                <div class="card-body d-flex flex-column align-items-center justify-content-center">
-                    <div class="mb-2" style="font-size:2rem;">🛒</div>
-                    <h5 class="card-title mb-2">ثبت سفارش جدید</h5>
-                    <p class="card-text text-muted mb-3">سفارش جدید خود را ثبت کنید</p>
-                    <a href="{% url 'core:products_landing' %}" class="btn btn-primary">شروع کنید</a>
-                </div>
-            </div>
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <a href="{% url 'core:products_landing' %}" class="btn btn-primary btn-lg w-100">
+                🛒 مشاهده محصولات
+            </a>
         </div>
-        <div class="col-12 col-md-4">
-            <div class="card dashboard-card h-100">
-                <div class="card-body d-flex flex-column align-items-center justify-content-center">
-                    <div class="mb-2" style="font-size:2rem;">📋</div>
-                    <h5 class="card-title mb-2">مشاهده سفارشات</h5>
-                    <p class="card-text text-muted mb-3">لیست سفارشات قبلی خود را ببینید</p>
-                    <a href="{% url 'core:orders_list' %}" class="btn btn-outline-primary">سفارشات من</a>
-                </div>
-            </div>
-        </div>
-        <div class="col-12 col-md-4">
-            <div class="card dashboard-card h-100">
-                <div class="card-body d-flex flex-column align-items-center justify-content-center">
-                    <div class="mb-2" style="font-size:2rem;">👤</div>
-                    <h5 class="card-title mb-2">پروفایل من</h5>
-                    <p class="card-text text-muted mb-3">ویرایش اطلاعات کاربری</p>
-                    <a href="{% url 'accounts:profile' %}" class="btn btn-outline-secondary">پروفایل</a>
-                </div>
-            </div>
+        <div class="col-md-6">
+            <a href="{% url 'core:customer_orders' %}" class="btn btn-info btn-lg w-100">
+                📋 سفارشات من
+            </a>
         </div>
     </div>
 

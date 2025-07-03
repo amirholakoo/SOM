@@ -197,79 +197,63 @@
 <div class="container">
     <!-- Overall Statistics -->
     <div class="inventory-stats">
-        <h4 class="mb-4">📊 آمار کلی موجودی</h4>
-        <div class="row">
-            <div class="col-md-2">
-                <div class="stat-box stat-primary">
-                    <h3>245</h3>
-                    <small>📦 کل اقلام</small>
-                </div>
+    <h4 class="mb-4">📊 آمار کلی موجودی</h4>
+    <div class="row">
+        <div class="col-md-2">
+            <div class="stat-box stat-primary">
+                <h3>{{ inventory_stats.total_items }}</h3>
+                <small>📦 کل اقلام</small>
             </div>
-            <div class="col-md-2">
-                <div class="stat-box stat-success">
-                    <h3>198</h3>
-                    <small>✅ موجود</small>
-                </div>
+        </div>
+        <div class="col-md-2">
+            <div class="stat-box stat-success">
+                <h3>{{ inventory_stats.in_stock }}</h3>
+                <small>✅ موجود</small>
             </div>
-            <div class="col-md-2">
-                <div class="stat-box stat-warning">
-                    <h3>32</h3>
-                    <small>⚠️ کم موجود</small>
-                </div>
+        </div>
+        <div class="col-md-2">
+            <div class="stat-box stat-warning">
+                <h3>{{ inventory_stats.low_stock }}</h3>
+                <small>⚠️ کم موجود</small>
             </div>
-            <div class="col-md-2">
-                <div class="stat-box stat-danger">
-                    <h3>15</h3>
-                    <small>❌ ناموجود</small>
-                </div>
+        </div>
+        <div class="col-md-2">
+            <div class="stat-box stat-danger">
+                <h3>{{ inventory_stats.sold_out }}</h3>
+                <small>❌ ناموجود</small>
             </div>
-            <div class="col-md-2">
-                <div class="stat-box stat-info">
-                    <h3>85%</h3>
-                    <small>📈 ظرفیت انبار</small>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="stat-box stat-primary">
-                    <h3>7</h3>
-                    <small>🏢 انبارها</small>
-                </div>
+        </div>
+        <div class="col-md-2">
+            <div class="stat-box stat-info">
+                <h3>{{ inventory_stats.capacity_percent }}%</h3>
+                <small>📈 ظرفیت انبار</small>
             </div>
         </div>
     </div>
+</div>
+
 
     <!-- Quick Actions -->
     <div class="quick-actions">
         <h4 class="mb-4">⚡ عملیات سریع</h4>
         <div class="row">
             <div class="col-md-3">
-                <a href="#" class="action-btn" onclick="addNewProduct()">
-                    <div class="mb-2">➕</div>
-                    <strong>افزودن محصول</strong>
-                    <small class="d-block text-muted">ثبت محصول جدید</small>
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="#" class="action-btn" onclick="updateInventory()">
-                    <div class="mb-2">🔄</div>
-                    <strong>بروزرسانی موجودی</strong>
-                    <small class="d-block text-muted">تغییر تعداد موجودی</small>
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="#" class="action-btn" onclick="transferProducts()">
-                    <div class="mb-2">🔄</div>
-                    <strong>انتقال بین انبار</strong>
-                    <small class="d-block text-muted">جابجایی محصولات</small>
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="#" class="action-btn" onclick="scanQR()">
-                    <div class="mb-2">📱</div>
-                    <strong>اسکن QR کد</strong>
-                    <small class="d-block text-muted">شناسایی سریع محصول</small>
-                </a>
-            </div>
+                <a href="#" class="action-btn" onclick="showCreateProductForm()">
+    <div class="mb-2">➕</div>
+    <strong>افزودن محصول</strong>
+    <small class="d-block text-muted">ثبت محصول جدید</small>
+</a>
+<div id="createProductForm" style="display:none;">
+    <h5>ایجاد محصول جدید</h5>
+    <input type="text" id="reel_number" placeholder="شماره ریل"><br>
+    <input type="text" id="location" placeholder="موقعیت"><br>
+    <input type="number" id="width" placeholder="عرض"><br>
+    <input type="number" id="gsm" placeholder="گرماژ"><br>
+    <input type="number" id="length" placeholder="طول"><br>
+    <input type="text" id="grade" placeholder="گرید"><br>
+    <button onclick="submitNewProduct()">ثبت</button>
+</div>
+
         </div>
     </div>
 
@@ -310,175 +294,12 @@
             </div>
         </form>
     </div>
-
-    <!-- Warehouses Overview -->
-    <div class="warehouse-section">
-        <h4 class="mb-4">🏢 نمای کلی انبارها</h4>
-        
-        <!-- Warehouse 1: انبار آخال -->
-        <div class="warehouse-card">
-            <div class="warehouse-header">
-                <div>
-                    <div class="warehouse-name">📍 انبار آخال</div>
-                    <small class="text-muted">انبار اصلی محصولات</small>
-                </div>
-                <div class="text-end">
-                    <span class="badge bg-success">✅ فعال</span>
-                    <div class="mt-1">
-                        <small class="text-muted">ظرفیت: 85%</small>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="row">
-                <div class="col-md-3">
-                    <div class="text-center">
-                        <h5 class="text-primary">45</h5>
-                        <small class="text-muted">📦 محصولات</small>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="text-center">
-                        <h5 class="text-success">38</h5>
-                        <small class="text-muted">✅ موجود</small>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="text-center">
-                        <h5 class="text-warning">5</h5>
-                        <small class="text-muted">⚠️ کم موجود</small>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="text-center">
-                        <h5 class="text-danger">2</h5>
-                        <small class="text-muted">❌ ناموجود</small>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="capacity-bar">
-                <div class="capacity-fill capacity-high" style="width: 85%"></div>
-            </div>
-            
-            <div class="product-grid">
-                <div class="product-mini-card">
-                    <div class="product-status status-available"></div>
-                    <strong>R001</strong>
-                    <div><small>1500m - A+</small></div>
-                    <div><small class="text-success">موجود</small></div>
-                </div>
-                <div class="product-mini-card">
-                    <div class="product-status status-available"></div>
-                    <strong>R002</strong>
-                    <div><small>1200m - A</small></div>
-                    <div><small class="text-success">موجود</small></div>
-                </div>
-                <div class="product-mini-card">
-                    <div class="product-status status-low"></div>
-                    <strong>R003</strong>
-                    <div><small>800m - B+</small></div>
-                    <div><small class="text-warning">کم موجود</small></div>
-                </div>
-                <div class="product-mini-card">
-                    <div class="product-status status-out"></div>
-                    <strong>R004</strong>
-                    <div><small>0m - A</small></div>
-                    <div><small class="text-danger">ناموجود</small></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Warehouse 2: انبار محوطه کردان -->
-        <div class="warehouse-card">
-            <div class="warehouse-header">
-                <div>
-                    <div class="warehouse-name">📍 انبار محوطه کردان</div>
-                    <small class="text-muted">انبار فرعی</small>
-                </div>
-                <div class="text-end">
-                    <span class="badge bg-success">✅ فعال</span>
-                    <div class="mt-1">
-                        <small class="text-muted">ظرفیت: 62%</small>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="row">
-                <div class="col-md-3">
-                    <div class="text-center">
-                        <h5 class="text-primary">32</h5>
-                        <small class="text-muted">📦 محصولات</small>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="text-center">
-                        <h5 class="text-success">28</h5>
-                        <small class="text-muted">✅ موجود</small>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="text-center">
-                        <h5 class="text-warning">3</h5>
-                        <small class="text-muted">⚠️ کم موجود</small>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="text-center">
-                        <h5 class="text-danger">1</h5>
-                        <small class="text-muted">❌ ناموجود</small>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="capacity-bar">
-                <div class="capacity-fill capacity-medium" style="width: 62%"></div>
-            </div>
-            
-            <div class="product-grid">
-                <div class="product-mini-card">
-                    <div class="product-status status-available"></div>
-                    <strong>R005</strong>
-                    <div><small>2000m - A+</small></div>
-                    <div><small class="text-success">موجود</small></div>
-                </div>
-                <div class="product-mini-card">
-                    <div class="product-status status-available"></div>
-                    <strong>R006</strong>
-                    <div><small>1800m - A</small></div>
-                    <div><small class="text-success">موجود</small></div>
-                </div>
-                <div class="product-mini-card">
-                    <div class="product-status status-low"></div>
-                    <strong>R007</strong>
-                    <div><small>300m - B</small></div>
-                    <div><small class="text-warning">کم موجود</small></div>
-                </div>
-                <div class="product-mini-card">
-                    <div class="product-status status-available"></div>
-                    <strong>R008</strong>
-                    <div><small>1500m - A+</small></div>
-                    <div><small class="text-success">موجود</small></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- More warehouses can be added here -->
-        <div class="text-center mt-4">
-            <button class="btn btn-outline-primary btn-lg" onclick="viewAllWarehouses()">
-                🏢 مشاهده همه انبارها
-            </button>
-        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// Add new product
-function addNewProduct() {
-    showNotification('➕ فرم افزودن محصول جدید در حال توسعه است', 'info');
-}
 
 // Update inventory
 function updateInventory() {
@@ -551,5 +372,68 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+function showCreateProductForm() {
+    document.getElementById("createProductForm").style.display = "block";
+}
+
+function toSafeFloat(value) {
+  const n = parseFloat(value);
+  return isNaN(n) ? 0 : n;
+}
+
+function toSafeInt(value) {
+  const n = parseInt(value);
+  return isNaN(n) ? 0 : n;
+}
+
+function submitNewProduct() {
+  const data = {
+    reel_number: document.getElementById("reel_number").value.trim(),
+    location: document.getElementById("location").value.trim(),
+    width: parseInt(document.getElementById("width").value) || 0,
+    gsm: parseInt(document.getElementById("gsm").value) || 0,
+    length: parseInt(document.getElementById("length").value) || 0,
+    grade: document.getElementById("grade").value.trim(),
+    price: toSafeFloat(document.getElementById("price")?.value),
+    breaks: toSafeInt(document.getElementById("breaks")?.value),
+  };
+
+  fetch("/core/api/create-product/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken"),
+    },
+    body: JSON.stringify(data),
+  })
+    .then((res) => res.json())
+    .then((res) => {
+      if (res.success) alert("✅ محصول با موفقیت ثبت شد!");
+      else alert("❌ خطا: " + res.error);
+    })
+    .catch((err) => {
+      alert("❌ خطای شبکه");
+      console.error(err);
+    });
+}
+
+
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== "") {
+        const cookies = document.cookie.split(";");
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === name + "=") {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
 </script>
 {% endblock %} 

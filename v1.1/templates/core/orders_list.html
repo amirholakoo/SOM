@@ -101,11 +101,21 @@
                         <span class="badge bg-primary">
                             {{ order.get_status_display }}
                         </span>
+                        {% if order.latest_payment %}
+                            <br><small class="text-muted">
+                                💳 {{ order.latest_payment.get_status_display_persian }}
+                            </small>
+                        {% endif %}
                     </div>
                     <div class="col-md-2">
                         <span class="badge bg-success">
                             {{ order.get_payment_method_display }}
                         </span>
+                        {% if order.latest_payment %}
+                            <br><small class="text-muted">
+                                🏦 {{ order.latest_payment.get_gateway_display_persian }}
+                            </small>
+                        {% endif %}
                     </div>
                     <div class="col-md-2 text-end">
                         <h6 class="mb-0">💰 {{ order.final_amount|floatformat:0 }} ت</h6>

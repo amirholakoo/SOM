@@ -22,7 +22,9 @@
             {% if user.is_authenticated %}
             <li class="nav-item"><a href="{% url 'accounts:logout' %}" class="nav-link">خروج</a></li>
             {% else %}
-            <li class="nav-item"><a href="{% url 'accounts:login' %}" class="nav-link">ورود</a></li>
+            <li class="nav-item"><a href="/accounts/customer/sms-login/" class="nav-link">ورود</a></li>
+
+
             {% endif %}
         </ul>
     </nav>
@@ -30,13 +32,10 @@
     <!-- Main Content - Shown during working hours -->
     <main class="main-content" id="mainContent">
         <section id="cashSection" class="section cash-section">
-            <div class="section-header">
-                <h2 class="section-title">محصولات موجود</h2>
-            </div>
 
             <div class="info-grid">
                 <div class="info-card">
-                    <div class="info-label">تعداد محصولات</div>
+                    <div class="info-label">قیمت خرید نقدی</div>
                     <div class="info-value" id="cashPrice">
                         {% if products %}
                         {{ products|length }} محصول
@@ -50,48 +49,28 @@
             <!-- جدول موجودی نقدی -->
             <div class="stock-table-container">
                 <h3 class="stock-title">موجودی نقدی - انتخاب محصول</h3>
-                <div class="selected-count">
-                    تعداد انتخاب شده: <span id="cashSelectedCount">0</span> از <span id="cashTotalCount">0</span>
-                </div>
+
                 <div class="table-responsive">
                     <table class="stock-table" id="cashStockTable">
                         <thead>
                             <tr>
-                                <th>انتخاب</th>
-                                <th>شماره ریل</th>
-                                <th>عرض (mm)</th>
-                                <th>گرماژ (g/m²)</th>
-                                <th>طول (m)</th>
-                                <th>قیمت (تومان)</th>
-                                <th>وضعیت</th>
-                                <th>مکان انبار</th>
+                                <th>عرض</th>
+                                <th>گرماژ</th>
+                                <th>تعداد</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% if products %}
                             {% for product in products %}
                             <tr class="stock-row" data-type="cash" data-product-id="{{ product.id }}">
-                                <td><input type="checkbox" class="stock-checkbox" data-section="cash"></td>
-                                <td>{{ product.reel_number }}</td>
                                 <td>{{ product.width }}</td>
                                 <td>{{ product.gsm }}</td>
-                                <td>{{ product.length }}</td>
-                                <td>{{ product.price|floatformat:0 }}</td>
-                                <td>
-                                    {% if product.status == 'In-stock' %}
-                                    <span class="status-badge available">📦 موجود</span>
-                                    {% elif product.status == 'Sold' %}
-                                    <span class="status-badge sold">💰 فروخته شده</span>
-                                    {% elif product.status == 'Pre-order' %}
-                                    <span class="status-badge preorder">⏳ پیش‌سفارش</span>
-                                    {% endif %}
-                                </td>
-                                <td>{{ product.get_location_display }}</td>
+                                <td>{{ product.get_order_items_count }}</td>
                             </tr>
                             {% endfor %}
                             {% else %}
                             <tr>
-                                <td colspan="8" class="text-center">
+                                <td colspan="4" class="text-center">
                                     <div class="no-products-message">
                                         <p>🔍 محصولی در انبار یافت نشد</p>
                                         <small>لطفاً بعداً مراجعه کنید یا با مدیر سیستم تماس بگیرید</small>
@@ -105,10 +84,10 @@
             </div>
 
             <div class="button-container">
-                <button class="purchase-btn cash-btn" onclick="handleCashPurchase()" id="cashPurchaseBtn" disabled>
-                    <span class="btn-icon">💰</span>
-                    <span class="btn-text">خرید نقدی</span>
-                </button>
+                <button class="purchase-btn cash-btn" onclick="handleCashPurchase()" id="cashPurchaseBtn">
+    <span class="btn-icon">💰</span>
+    <span class="btn-text">خرید نقدی</span>
+</button>
             </div>
         </section>
 
@@ -119,7 +98,7 @@
 
             <div class="info-grid">
                 <div class="info-card">
-                    <div class="info-label">قیمت نسیه</div>
+                    <div class="info-label">قیمت خرید نسیه</div>
                     <div class="info-value" id="creditPrice">
                         {% if credit_products %}
                         {% with first_product=credit_products.0 %}
@@ -137,48 +116,28 @@
             <!-- جدول موجودی نسیه -->
             <div class="stock-table-container">
                 <h3 class="stock-title">موجودی نسیه - انتخاب محصول</h3>
-                <div class="selected-count">
-                    تعداد انتخاب شده: <span id="creditSelectedCount">0</span> از <span id="creditTotalCount">0</span>
-                </div>
+
                 <div class="table-responsive">
                     <table class="stock-table" id="creditStockTable">
                         <thead>
                             <tr>
-                                <th>انتخاب</th>
-                                <th>شماره ریل</th>
-                                <th>عرض (mm)</th>
-                                <th>گرماژ (g/m²)</th>
-                                <th>طول (m)</th>
-                                <th>قیمت (تومان)</th>
-                                <th>وضعیت</th>
-                                <th>مکان انبار</th>
+                                <th>عرض</th>
+                                <th>گرماژ</th>
+                                <th>تعداد</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% if products %}
                             {% for product in products %}
                             <tr class="stock-row" data-type="credit" data-product-id="{{ product.id }}">
-                                <td><input type="checkbox" class="stock-checkbox" data-section="credit"></td>
-                                <td>{{ product.reel_number }}</td>
                                 <td>{{ product.width }}</td>
                                 <td>{{ product.gsm }}</td>
-                                <td>{{ product.length }}</td>
-                                <td>{{ product.price|floatformat:0 }}</td>
-                                <td>
-                                    {% if product.status == 'In-stock' %}
-                                    <span class="status-badge available">📦 موجود</span>
-                                    {% elif product.status == 'Sold' %}
-                                    <span class="status-badge sold">💰 فروخته شده</span>
-                                    {% elif product.status == 'Pre-order' %}
-                                    <span class="status-badge preorder">⏳ پیش‌سفارش</span>
-                                    {% endif %}
-                                </td>
-                                <td>{{ product.get_location_display }}</td>
+                                <td>{{ product.get_order_items_count }}</td>
                             </tr>
                             {% endfor %}
                             {% else %}
                             <tr>
-                                <td colspan="8" class="text-center">
+                                <td colspan="4" class="text-center">
                                     <div class="no-products-message">
                                         <p>🔍 محصولی در انبار یافت نشد</p>
                                         <small>لطفاً بعداً مراجعه کنید یا با مدیر سیستم تماس بگیرید</small>
@@ -190,13 +149,11 @@
                     </table>
                 </div>
             </div>
-
             <div class="button-container">
-                <button class="purchase-btn credit-btn" onclick="handleCreditPurchase()" id="creditPurchaseBtn"
-                    disabled>
-                    <span class="btn-icon">📋</span>
-                    <span class="btn-text">خرید نسیه</span>
-                </button>
+                <button class="purchase-btn credit-btn" onclick="handleCreditPurchase()" id="creditPurchaseBtn">
+    <span class="btn-icon">📋</span>
+    <span class="btn-text">خرید نسیه</span>
+</button>
             </div>
         </section>
     </main>
@@ -238,51 +195,19 @@
             <div class="footer-section contact-info">
                 <h3 class="footer-title">اطلاعات تماس</h3>
                 <div class="contact-items">
-                    <div class="contact-item">
-                        <span class="contact-icon">📞</span>
+                    <div class="contact-item phone-item">
+                        <div class="contact-icon">📞</div>
                         <div class="contact-details">
-                            <span class="contact-label">تلفن تماس:</span>
-                            <span class="contact-value">۰۲۱-۱۲۳۴۵۶۷۸</span>
+                            <span class="contact-label">تلفن:</span>
+                            <span class="contact-value">{{ contact_phone|default:'0123456789' }}</span>
                         </div>
                     </div>
-                    <div class="contact-item">
-                        <span class="contact-icon">📱</span>
-                        <div class="contact-details">
-                            <span class="contact-label">موبایل:</span>
-                            <span class="contact-value">۰۹۱۲-۳۴۵-۶۷۸۹</span>
-                        </div>
-                    </div>
-                    <div class="contact-item email-item">
-                        <span class="contact-icon">📧</span>
-                        <div class="contact-details">
-                            <span class="contact-label">ایمیل:</span>
-                            <span class="contact-value">info@homayounpaper.com</span>
-                        </div>
-                    </div>
-                    <div class="contact-item">
-                        <span class="contact-icon">📍</span>
+                    <div class="contact-item address-item">
+                        <div class="contact-icon">📍</div>
                         <div class="contact-details">
                             <span class="contact-label">آدرس:</span>
-                            <span class="contact-value">تهران، خیابان ولیعصر، پلاک ۱۲۳</span>
+                            <span class="contact-value">{{ contact_address|default:'تهران، خیابان ولیعصر' }}</span>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="footer-section working-hours">
-                <h3 class="footer-title">ساعات کاری</h3>
-                <div class="hours-info">
-                    <div class="hours-item">
-                        <span class="hours-label">شنبه تا چهارشنبه:</span>
-                        <span class="hours-value">۰۸:۰۰ - ۱۸:۰۰</span>
-                    </div>
-                    <div class="hours-item">
-                        <span class="hours-label">پنج‌شنبه:</span>
-                        <span class="hours-label">۰۸:۰۰ - ۱۶:۰۰</span>
-                    </div>
-                    <div class="hours-item">
-                        <span class="hours-label">جمعه:</span>
-                        <span class="hours-value">تعطیل</span>
                     </div>
                 </div>
             </div>
@@ -599,7 +524,28 @@
         });
     });
 
+    function redirectTo(url) {
+        window.location.href = url;
+    }
+
     function handleCashPurchase() {
+    const isAuthenticated = {{ user.is_authenticated|yesno:"true,false" }};
+    if (isAuthenticated) {
+        window.location.href = '/core/';
+    } else {
+        window.location.href = '/accounts/customer/sms-login/';
+        }
+    }
+
+    function handleCreditPurchase() {
+    const isAuthenticated = {{ user.is_authenticated|yesno:"true,false" }};
+    if (isAuthenticated) {
+        window.location.href = '/core/';
+    } else {
+        window.location.href = '/accounts/customer/sms-login/';
+        }
+    }
+    {% comment %} function handleCashPurchase() {
         const selectedRows = document.querySelectorAll('#cashStockTable .stock-row.selected');
         if (selectedRows.length === 0) {
             showAlert('لطفا حداقل یک مورد را انتخاب کنید', 'error', 'انتخاب محصول');
@@ -628,9 +574,9 @@
 
         console.log('خرید نقدی:', purchaseList);
         showAlert(`${selectedRows.length} نوع محصول با مجموع ${totalItems} عدد برای خرید نقدی انتخاب شد`, 'success', 'خرید موفق');
-    }
+    } {% endcomment %}
 
-    function handleCreditPurchase() {
+    {% comment %} function handleCreditPurchase() {
         const selectedRows = document.querySelectorAll('#creditStockTable .stock-row.selected');
         if (selectedRows.length === 0) {
             showAlert('لطفا حداقل یک مورد را انتخاب کنید', 'error', 'انتخاب محصول');
@@ -659,6 +605,6 @@
 
         console.log('خرید نسیه:', purchaseList);
         showAlert(`${selectedRows.length} نوع محصول با مجموع ${totalItems} عدد برای خرید نسیه انتخاب شد`, 'success', 'خرید موفق');
-    }
+    } {% endcomment %}
 </script>
 {% endblock %}

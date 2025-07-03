@@ -239,10 +239,6 @@
                         <span class="detail-value">{{ user_obj.last_name|default:"ندارد" }}</span>
                     </div>
                     <div class="detail-item">
-                        <span class="detail-label">📧 ایمیل:</span>
-                        <span class="detail-value">{{ user_obj.email|default:"ندارد" }}</span>
-                    </div>
-                    <div class="detail-item">
                         <span class="detail-label">📱 شماره تلفن:</span>
                         <span class="detail-value">{{ user_obj.phone|default:"ندارد" }}</span>
                     </div>
@@ -267,9 +263,9 @@
                         <span class="detail-label">✅ فعال:</span>
                         <span class="detail-value">
                             {% if user_obj.is_active %}
-                                ✅ بله
+                            ✅ بله
                             {% else %}
-                                ❌ خیر
+                            ❌ خیر
                             {% endif %}
                         </span>
                     </div>
@@ -290,9 +286,9 @@
                         <span class="detail-label">🕐 آخرین ورود:</span>
                         <span class="detail-value">
                             {% if user_obj.last_login %}
-                                {{ user_obj.last_login|date:"Y/m/d H:i" }}
+                            {{ user_obj.last_login|date:"Y/m/d H:i" }}
                             {% else %}
-                                هرگز وارد نشده
+                            هرگز وارد نشده
                             {% endif %}
                         </span>
                     </div>
@@ -300,9 +296,9 @@
                         <span class="detail-label">🏃 آخرین فعالیت:</span>
                         <span class="detail-value">
                             {% if user_obj.last_activity %}
-                                {{ user_obj.last_activity|date:"Y/m/d H:i" }}
+                            {{ user_obj.last_activity|date:"Y/m/d H:i" }}
                             {% else %}
-                                ندارد
+                            ندارد
                             {% endif %}
                         </span>
                     </div>
@@ -310,9 +306,9 @@
                         <span class="detail-label">🔐 انقضای رمز عبور:</span>
                         <span class="detail-value">
                             {% if user_obj.password_expires_at %}
-                                {{ user_obj.password_expires_at|date:"Y/m/d" }}
+                            {{ user_obj.password_expires_at|date:"Y/m/d" }}
                             {% else %}
-                                نامحدود
+                            نامحدود
                             {% endif %}
                         </span>
                     </div>
@@ -325,9 +321,9 @@
                         <span class="detail-label">📝 یادداشت‌ها:</span>
                         <span class="detail-value">
                             {% if user_obj.notes %}
-                                {{ user_obj.notes|truncatewords:10 }}
+                            {{ user_obj.notes|truncatewords:10 }}
                             {% else %}
-                                ندارد
+                            ندارد
                             {% endif %}
                         </span>
                     </div>
@@ -348,4 +344,4 @@
         </div>
     </div>
 </div>
-{% endblock %} 
+{% endblock %}
